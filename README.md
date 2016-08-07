@@ -6,8 +6,6 @@ Based on http://modbus.org/docs/PI_MBUS_300.pdf
 
 ## Installation and Usage
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed as:
-
   1. Add `modbus` to your list of dependencies in `mix.exs`:
 
     ```elixir
@@ -26,7 +24,7 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
     req = Request.pack(cmd)
     #send request thru a serial (RTU, ASCII) or socket (TCP) channel
     res = channel.send(req)
-    {[1], tail} = res.parse(cmd, res)
+    {[1], tail} = Response.parse(cmd, res)
     ```
 
 ## Roadmap

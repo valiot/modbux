@@ -1,0 +1,25 @@
+defmodule F16Test do
+  use ExUnit.Case
+  alias Modbus.Request
+  alias Modbus.Response
+  alias Modbus.Model
+
+  test "Write 0x616263646566 to Multiple Analog Outputs" do
+    state0 = %{ 0x50=>%{
+      {:ao, 0x5152}=>0, {:ao, 0x5153}=>0, {:ao, 0x5154}=>0,
+    } }
+    state1 = %{ 0x50=>%{
+      {:ao, 0x5152}=>0x6162, {:ao, 0x5153}=>0x6364, {:ao, 0x5154}=>0x6566,
+    } }
+    val0 = [0x6162,0x6364,0x6566]
+    cmd0 = {:wao, 0x50, 0x5152, val0}
+    req0 = <<0x50, 16, 0x51, 0x52, 0, 3, 6, 0x61,0x62, 0x63,0x64, 0x65,0x66>>
+    resp0 = <<0x50, 16, 0x51, 0x52, 0, 3>>
+    ^req0 = Request.pack(cmd0)
+    {^cmd0, <<>>} = Request.parse(req0)
+    {^state1, nil} = Model.apply(state0, cmd0)
+    ^resp0 = Response.pack(cmd0, nil)
+    {nil, <<>>} = Response.parse(cmd0, resp0)
+  end
+
+end

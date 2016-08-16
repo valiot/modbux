@@ -10,12 +10,12 @@ defmodule F5Test do
     val0 = 0
     cmd0 = {:wdo, 0x50, 0x5152, val0}
     req0 = <<0x50, 5, 0x51, 0x52, 0, 0>>
-    resp0 = <<0x50, 5, 0x51, 0x52, 0, 0>>
+    res0 = <<0x50, 5, 0x51, 0x52, 0, 0>>
     ^req0 = Request.pack(cmd0)
     {^cmd0, <<>>} = Request.parse(req0)
     {^state1, nil} = Model.apply(state0, cmd0)
-    ^resp0 = Response.pack(cmd0, nil)
-    {nil, <<>>} = Response.parse(cmd0, resp0)
+    ^res0 = Response.pack(cmd0, nil)
+    {nil, <<>>} = Response.parse(cmd0, res0)
   end
 
   test "Write 1 to Single Digital Output" do
@@ -24,12 +24,12 @@ defmodule F5Test do
     val0 = 1
     cmd0 = {:wdo, 0x50, 0x5152, val0}
     req0 = <<0x50, 5, 0x51, 0x52, 0xFF, 0>>
-    resp0 = <<0x50, 5, 0x51, 0x52, 0xFF, 0>>
+    res0 = <<0x50, 5, 0x51, 0x52, 0xFF, 0>>
     ^req0 = Request.pack(cmd0)
     {^cmd0, <<>>} = Request.parse(req0)
     {^state1, nil} = Model.apply(state0, cmd0)
-    ^resp0 = Response.pack(cmd0, nil)
-    {nil, <<>>} = Response.parse(cmd0, resp0)
+    ^res0 = Response.pack(cmd0, nil)
+    {nil, <<>>} = Response.parse(cmd0, res0)
   end
 
 end

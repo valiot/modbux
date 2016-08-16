@@ -1,6 +1,6 @@
 # modbus
 
-Modbus for elixir.
+Modbus for Elixir.
 
 Based on http://modbus.org/docs/PI_MBUS_300.pdf
 
@@ -19,7 +19,7 @@ Based on http://modbus.org/docs/PI_MBUS_300.pdf
     ```elixir
     alias Modbus.Request
     alias Modbus.Response
-    #read one coil from slave 5 address 2300
+    #read 1 coil from slave 5 address 2300
     cmd = {:rdo, 5, 2300, 1}
     req = Request.pack(cmd)
     #send request thru a serial (RTU, ASCII) or socket (TCP) channel

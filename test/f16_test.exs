@@ -14,12 +14,12 @@ defmodule F16Test do
     val0 = [0x6162,0x6364,0x6566]
     cmd0 = {:wao, 0x50, 0x5152, val0}
     req0 = <<0x50, 16, 0x51, 0x52, 0, 3, 6, 0x61,0x62, 0x63,0x64, 0x65,0x66>>
-    resp0 = <<0x50, 16, 0x51, 0x52, 0, 3>>
+    res0 = <<0x50, 16, 0x51, 0x52, 0, 3>>
     ^req0 = Request.pack(cmd0)
     {^cmd0, <<>>} = Request.parse(req0)
     {^state1, nil} = Model.apply(state0, cmd0)
-    ^resp0 = Response.pack(cmd0, nil)
-    {nil, <<>>} = Response.parse(cmd0, resp0)
+    ^res0 = Response.pack(cmd0, nil)
+    {nil, <<>>} = Response.parse(cmd0, res0)
   end
 
 end

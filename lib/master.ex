@@ -1,8 +1,10 @@
-defmodule Modbus.TCP do
+defmodule Modbus.Master do
   @moduledoc """
   Server module to handle a socket connection.
   """
   use GenServer
+  alias Modbus.Request
+  alias Modbus.Response
 
   ##########################################
   # Public API
@@ -25,12 +27,14 @@ defmodule Modbus.TCP do
 
   `port` is the tcp port number to connect to.
 
+  `timeout` is the connection timeout.
+
   Returns `{:ok, pid}`.
 
   ## Example
 
   ```elixir
-  Modbus.TCP.start_link([ip: {10,77,0,211}, port: 8899], [name: Modbus.TCP])
+  Modbus.Master.start_link([ip: {10,77,0,211}, port: 8899, timeout: 800])
   ```
 
   """
@@ -48,23 +52,14 @@ defmodule Modbus.TCP do
     Process.exit(pid, :stop)
   end
 
-  @doc """
-  Sends an TCP command.
-
-  Returns `{:ok, response}`.
-
-  ## Example:
-  ```
-  #write 1 to coil at slave 2 address 3200
-  :ok = TCP.cmd(pid, {:wdo, 2, 3200, 1}, 400)
-  #write 0 to coil at slave 2 address 3200
-  :ok = TCP.cmd(pid, {:wdo, 2, 3200, 0}, 400)
-  #read 1 from coil at slave 2 address 3200
-  {:ok, [1]} = TCP.cmd(pid, {:rdo, 2, 3200, 1}, 400)
-  ```
-  """
-  def cmd(pid, cmd, timeout) do
-    GenServer.call(pid, {:tcp, cmd, timeout})
+  def tcp(pid, cmd, timeout) do
+    request = Request.pack(cmd)
+    response = GenServer.call(pid, {:reqres, request, timeout})
+    {values, <<>>} = Response.parse(cmd, response)
+    case values do
+      nil -> :ok
+      _ -> {:ok, values}
+    end
   end
 
   ##########################################
@@ -81,23 +76,12 @@ defmodule Modbus.TCP do
     #:io.format "terminate ~p ~p ~p ~n", [__MODULE__, reason, state]
   end
 
-  def handle_call({:tcp, cmd, timeout}, _from, {socket, count}) do
-    request = Modbus.Request.pack(cmd)
+  def handle_call({:reqres, request, timeout}, _from, {socket, count}) do
     size =  :erlang.byte_size(request)
     :ok = :gen_tcp.send(socket, <<count::size(16),0,0,size::size(16),request::binary>>)
-    {:ok, <<count::size(16),0,0,_size2::size(16),response::binary>>} = :gen_tcp.recv(socket, 0, timeout)
-    {:reply, parsetcp(cmd, response), {socket, count + 1}}
+    {:ok, <<count::size(16),0,0,ressize::size(16),response::binary>>} = :gen_tcp.recv(socket, 0, timeout)
+    ^ressize = :erlang.byte_size(response)
+    {:reply, response, {socket, count + 1}}
   end
 
-  ##########################################
-  # Internal Implementation
-  ##########################################
-
-  defp parsetcp(cmd, response) do
-    {values, <<>>} = Modbus.Response.parse(cmd, response)
-    case values do
-      nil -> :ok
-      _ -> {:ok, values}
-    end
-  end
 end

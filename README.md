@@ -1,6 +1,6 @@
 # modbus
 
-Modbus for Elixir.
+Modbus for Elixir with a TCP implementation.
 
 ***To be used by ```baud``` and ```serex```***
 
@@ -32,14 +32,14 @@ Based on http://modbus.org/docs/PI_MBUS_300.pdf
 3. Use as TCP master
 
   ```elixir
-  alias Modbus.TCP
-  TCP.start_link([ip: {10,77,0,211}, port: 8899])
+  alias Modbus.Master
+  Master.start_link([ip: {10,77,0,211}, port: 8899])
   #write 1 to coil at slave 2 address 3200
-  :ok = TCP.cmd(pid, {:wdo, 2, 3200, 1}, 400)
+  :ok = Master.tcp(pid, {:wdo, 2, 3200, 1}, 400)
   #write 0 to coil at slave 2 address 3200
-  :ok = TCP.cmd(pid, {:wdo, 2, 3200, 0}, 400)
+  :ok = Master.tcp(pid, {:wdo, 2, 3200, 0}, 400)
   #read 1 from coil at slave 2 address 3200
-  {:ok, [1]} = TCP.cmd(pid, {:rdo, 2, 3200, 1}, 400)
+  {:ok, [1]} = Master.tcp(pid, {:rdo, 2, 3200, 1}, 400)
   ```
 
 ## Roadmap

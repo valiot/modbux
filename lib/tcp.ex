@@ -59,7 +59,7 @@ defmodule Modbus.TCP do
   :ok = TCP.cmd(pid, {:wdo, 2, 3200, 1}, 400)
   #write 0 to coil at slave 2 address 3200
   :ok = TCP.cmd(pid, {:wdo, 2, 3200, 0}, 400)
-  #read 1 coil at slave 2 address 3200
+  #read 1 from coil at slave 2 address 3200
   {:ok, [1]} = TCP.cmd(pid, {:rdo, 2, 3200, 1}, 400)
   ```
   """

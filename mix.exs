@@ -25,13 +25,13 @@ defmodule Modbus.Mixfile do
 
   defp description do
     """
-    Modbus for elixir.
+    Modbus for Elixir.
     """
   end
 
   defp package do
     [
-     name: :baud,
+     name: :modbus,
      files: ["lib", "test", "mix.exs", "*.md", ".gitignore"],
      maintainers: ["Samuel Ventura"],
      licenses: ["Apache 2.0"],

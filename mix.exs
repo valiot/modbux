@@ -3,7 +3,7 @@ defmodule Modbus.Mixfile do
 
   def project do
     [app: :modbus,
-     version: "0.1.0",
+     version: "0.2.0",
      elixir: "~> 1.3",
      compilers: [:elixir, :app],
      build_embedded: Mix.env == :prod,
@@ -25,24 +25,23 @@ defmodule Modbus.Mixfile do
   end
 
   defp description do
-    """
-    Modbus for Elixir.
-    """
+    "Modbus library with TCP implementation."
   end
 
   defp package do
     [
      name: :modbus,
-     files: ["lib", "test", "mix.*", "*.exs", "*.md", ".gitignore"],
+     files: ["lib", "test", "scripts", "mix.*", "*.exs", "*.md", ".gitignore", "LICENSE"],
      maintainers: ["Samuel Ventura"],
      licenses: ["Apache 2.0"],
-     links: %{"GitHub" => "https://github.com/samuelventura/modbus/",
-              "Docs" => "http://samuelventura.github.io/modbus/"}]
+     links: %{"GitHub" => "https://github.com/samuelventura/modbus/"}]
   end
 
   defp aliases do
     [
-      "opto22": ["run opto22.exs"],
+      "sample": ["run scripts/sample.exs"],
+      "snappac": ["run scripts/snappac.exs"],
+      "modport": ["run scripts/modport.exs"],
     ]
   end
 end

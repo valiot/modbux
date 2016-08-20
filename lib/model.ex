@@ -1,35 +1,36 @@
 defmodule Modbus.Model do
+  @moduledoc false
 
-  def apply(state, {:rdo, slave, address, count}) do
-    reads(state, {slave, :do, address, count})
+  def apply(state, {:rc, slave, address, count}) do
+    reads(state, {slave, :hr, address, count})
   end
 
-  def apply(state, {:rdi, slave, address, count}) do
-    reads(state, {slave, :di, address, count})
+  def apply(state, {:ri, slave, address, count}) do
+    reads(state, {slave, :i, address, count})
   end
 
-  def apply(state, {:rao, slave, address, count}) do
-    reads(state, {slave, :ao, address, count})
+  def apply(state, {:rhr, slave, address, count}) do
+    reads(state, {slave, :hr, address, count})
   end
 
-  def apply(state, {:rai, slave, address, count}) do
-    reads(state, {slave, :ai, address, count})
+  def apply(state, {:rir, slave, address, count}) do
+    reads(state, {slave, :ir, address, count})
   end
 
-  def apply(state, {:wdo, slave, address, value}) when is_integer(value) do
-    write(state, {slave, :do, address, value})
+  def apply(state, {:fc, slave, address, value}) when is_integer(value) do
+    write(state, {slave, :hr, address, value})
   end
 
-  def apply(state, {:wdo, slave, address, values}) when is_list(values) do
-    writes(state, {slave, :do, address, values})
+  def apply(state, {:fc, slave, address, values}) when is_list(values) do
+    writes(state, {slave, :hr, address, values})
   end
 
-  def apply(state, {:wao, slave, address, value}) when is_integer(value) do
-    write(state, {slave, :ao, address, value})
+  def apply(state, {:phr, slave, address, value}) when is_integer(value) do
+    write(state, {slave, :hr, address, value})
   end
 
-  def apply(state, {:wao, slave, address, values}) when is_list(values) do
-    writes(state, {slave, :ao, address, values})
+  def apply(state, {:phr, slave, address, values}) when is_list(values) do
+    writes(state, {slave, :hr, address, values})
   end
 
   defp reads(state, {slave, type, address, count}) do

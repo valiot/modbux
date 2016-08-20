@@ -5,10 +5,10 @@ defmodule F6Test do
   alias Modbus.Model
 
   test "Write 0x6162 to Single Analog Output" do
-    state0 = %{ 0x50=>%{ {:ao, 0x5152}=>0 } }
-    state1 = %{ 0x50=>%{ {:ao, 0x5152}=>0x6162 } }
+    state0 = %{ 0x50=>%{ {:hr, 0x5152}=>0 } }
+    state1 = %{ 0x50=>%{ {:hr, 0x5152}=>0x6162 } }
     val0 = 0x6162
-    cmd0 = {:wao, 0x50, 0x5152, val0}
+    cmd0 = {:phr, 0x50, 0x5152, val0}
     req0 = <<0x50, 6, 0x51, 0x52, 0x61, 0x62>>
     res0 = <<0x50, 6, 0x51, 0x52, 0x61, 0x62>>
     ^req0 = Request.pack(cmd0)

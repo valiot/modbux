@@ -1,5 +1,5 @@
 defmodule Modbus.Request do
-  import Modbus.Helper
+  alias Modbus.Helper
   @moduledoc false
 
   def pack({:rc, slave, address, count}) do
@@ -34,70 +34,70 @@ defmodule Modbus.Request do
     writes(:a, slave, 16, address, values)
   end
 
-  def parse(<<slave, 1, address::size(16), count::size(16), tail::binary>>) do
-    {{:rc, slave, address, count}, tail}
+  def parse(<<slave, 1, address::16, count::16>>) do
+    {:rc, slave, address, count}
   end
 
-  def parse(<<slave, 2, address::size(16), count::size(16), tail::binary>>) do
-    {{:ri, slave, address, count}, tail}
+  def parse(<<slave, 2, address::16, count::16>>) do
+    {:ri, slave, address, count}
   end
 
-  def parse(<<slave, 3, address::size(16), count::size(16), tail::binary>>) do
-    {{:rhr, slave, address, count}, tail}
+  def parse(<<slave, 3, address::16, count::16>>) do
+    {:rhr, slave, address, count}
   end
 
-  def parse(<<slave, 4, address::size(16), count::size(16), tail::binary>>) do
-    {{:rir, slave, address, count}, tail}
+  def parse(<<slave, 4, address::16, count::16>>) do
+    {:rir, slave, address, count}
   end
 
-  def parse(<<slave, 5, address::size(16), 0x00, 0x00, tail::binary>>) do
-    {{:fc, slave, address, 0}, tail}
+  def parse(<<slave, 5, address::16, 0x00, 0x00>>) do
+    {:fc, slave, address, 0}
   end
 
-  def parse(<<slave, 5, address::size(16), 0xFF, 0x00, tail::binary>>) do
-    {{:fc, slave, address, 1}, tail}
+  def parse(<<slave, 5, address::16, 0xFF, 0x00>>) do
+    {:fc, slave, address, 1}
   end
 
-  def parse(<<slave, 6, address::size(16), value::size(16), tail::binary>>) do
-    {{:phr, slave, address, value}, tail}
+  def parse(<<slave, 6, address::16, value::16>>) do
+    {:phr, slave, address, value}
   end
 
-  def parse(<<slave, 15, address::size(16), count::size(16), bytes, data::binary>>) do
-    ^bytes = byte_count(count)
-    {values, tail} = bin2bitlist(count, data)
-    {{:fc, slave, address, values}, tail}
+  def parse(<<slave, 15, address::16, count::16, bytes, data::binary>>) do
+    ^bytes = Helper.byte_count(count)
+    values = Helper.bin_to_bitlist(count, data)
+    {:fc, slave, address, values}
   end
 
-  def parse(<<slave, 16, address::size(16), count::size(16), bytes, data::binary>>) do
+  def parse(<<slave, 16, address::16, count::16, bytes, data::binary>>) do
     ^bytes = 2 * count
-    {values, tail} = bin2registerlist(count, data)
-    {{:phr, slave, address, values}, tail}
+    values = Helper.bin_to_reglist(count, data)
+    {:phr, slave, address, values}
   end
 
   defp reads(_type, slave, function, address, count) do
-    <<slave, function, address::size(16), count::size(16)>>
+    <<slave, function, address::16, count::16>>
   end
 
   defp write(:d, slave, function, address, value) do
-    <<slave, function, address::size(16), bool_val(value), 0x00>>
+    <<slave, function, address::16, Helper.bool_to_byte(value), 0x00>>
   end
 
   defp write(:a, slave, function, address, value) do
-    <<slave, function, address::size(16), value::size(16)>>
+    <<slave, function, address::16, value::16>>
   end
 
   defp writes(:d, slave, function, address, values) do
     count =  Enum.count(values)
-    bytes = byte_count(count)
-    data = bitlist2bin(values)
-    <<slave, function, address::size(16), count::size(16), bytes, data::binary>>
+    bytes = Helper.byte_count(count)
+    data = Helper.bitlist_to_bin(values)
+    <<slave, function, address::16, count::16, bytes, data::binary>>
   end
 
   defp writes(:a, slave, function, address, values) do
     count =  Enum.count(values)
     bytes = 2 * count
-    data = registerlist2bin(values)
-    <<slave, function, address::size(16), count::size(16), bytes, data::binary>>
+    data = Helper.reglist_to_bin(values)
+    <<slave, function, address::16, count::16, bytes, data::binary>>
   end
 
 end

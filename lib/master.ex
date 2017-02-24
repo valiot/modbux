@@ -1,32 +1,62 @@
 defmodule Modbus.Master do
   @moduledoc """
-  Server module to handle a socket connection.
+  TCP Master module.
+
+  ## Example
+
+  ```elixir
+  alias Modbus.Master
+
+  #opto22 rack configured as follows
+  # m0 - 4p digital input
+  #  p0 - 24V
+  #  p1 - 0V
+  #  p2 - m1.p2
+  #  p3 - m1.p3
+  # m1 - 4p digital output
+  #  p0 - NC
+  #  p1 - NC
+  #  p2 - m0.p2
+  #  p3 - m0.p3
+
+  {:ok, pid} = Master.start_link([ip: {10,77,0,2}, port: 502])
+
+  #read 1 from input at slave 1 address 0 (m0.p0)
+  {:ok, [1]} = Master.tcp(pid, {:ri, 1, 0, 1})
+  #read 0 from input at slave 1 address 1 (m0.p1)
+  {:ok, [0]} = Master.tcp(pid, {:ri, 1, 1, 1})
+  #read both previous inputs at once
+  {:ok, [1, 0]} = Master.tcp(pid, {:ri, 1, 0, 2})
+
+  #turn off coil at slave 1 address 6 (m1.p2)
+  :ok = Master.tcp(pid, {:fc, 1, 6, 0})
+  :timer.sleep(50) #let output settle
+  #read 0 from input at slave 1 address 2 (m0.p2)
+  {:ok, [0]} = Master.tcp(pid, {:ri, 1, 2, 1})
+
+  #turn on coil at slave 1 address 7 (m1.p3)
+  :ok = Master.tcp(pid, {:fc, 1, 7, 1})
+  :timer.sleep(50) #let output settle
+  #read 1 from input at slave 1 address 3 (m0.p3)
+  {:ok, [1]} = Master.tcp(pid, {:ri, 1, 3, 1})
+  ```
   """
-  use GenServer
   alias Modbus.Request
   alias Modbus.Response
+  alias Modbus.Tcp
+
+  @to 2000
 
   ##########################################
   # Public API
   ##########################################
 
   @doc """
-  Starts the GenServer.
+  Starts the Server.
 
-  `state` is a keyword list to be merged with the following defaults:
-
-  ```elixir
-  %{
-    ip: {0,0,0,0},
-    port: 0,
-    timeout: 400,
-  }
-  ```
-
+  `state` is a keyword list where:
   `ip` is the internet address to connect to.
-
   `port` is the tcp port number to connect to.
-
   `timeout` is the connection timeout.
 
   Returns `{:ok, pid}`.
@@ -34,22 +64,19 @@ defmodule Modbus.Master do
   ## Example
 
   ```elixir
-  Modbus.Master.start_link([ip: {10,77,0,211}, port: 8899, timeout: 800])
+  Modbus.Master.start_link([ip: {10,77,0,2}, port: 502, timeout: 2000])
   ```
 
   """
-  def start_link(state, opts \\ []) do
-    GenServer.start_link(__MODULE__, state, opts)
+  def start_link(params, opts \\ []) do
+    Agent.start_link(fn -> init(params) end, opts)
   end
 
   @doc """
-  Stops the GenServer.
-
-  Returns `:ok`.
+  Stops the Server.
   """
   def stop(pid) do
-    #don't use :normal or the listener won't be stop
-    Process.exit(pid, :stop)
+    Agent.stop(pid)
   end
 
   @doc """
@@ -68,40 +95,27 @@ defmodule Modbus.Master do
 
   Returns `:ok` | `{:ok, [values]}`.
   """
-  def tcp(pid, cmd, timeout) do
-    GenServer.call(pid, {:tcp, cmd, timeout})
+  def tcp(pid, cmd, timeout \\ @to) do
+    Agent.get_and_update(pid, fn {socket, transid} ->
+      request = Request.pack(cmd)
+      :ok = :gen_tcp.send(socket, Tcp.wrap(request, transid))
+      {:ok, data} = :gen_tcp.recv(socket, 0, timeout)
+      response = Tcp.unwrap(data, transid)
+      values = Response.parse(cmd, response)
+      case values do
+        nil -> {:ok, {socket, transid + 1}}
+        _ -> {{:ok, values}, {socket, transid + 1}}
+      end
+    end)
   end
 
-  ##########################################
-  # GenServer Implementation
-  ##########################################
-
-  def init(state) do
-    config = Enum.into(state, %{ip: {0,0,0,0}, port: 0, timeout: 400})
-    {:ok, socket} = :gen_tcp.connect(config.ip, config.port, [:binary, packet: :raw, active: :false], config.timeout)
-    {:ok, {socket, 0}}
-  end
-
-  def terminate(_reason, _state) do
-    #:io.format "terminate ~p ~p ~p ~n", [__MODULE__, reason, state]
-  end
-
-  def handle_call({:tcp, cmd, timeout}, _from, {socket, count}) do
-    request = Request.pack(cmd)
-    response = reqres(socket, count, request, timeout)
-    {values, <<>>} = Response.parse(cmd, response)
-    case values do
-      nil -> {:reply, :ok, {socket, count + 1}}
-      _ -> {:reply, {:ok, values}, {socket, count + 1}}
-    end
-  end
-
-  defp reqres(socket, count, request, timeout) do
-    size =  :erlang.byte_size(request)
-    :ok = :gen_tcp.send(socket, <<count::size(16),0,0,size::size(16),request::binary>>)
-    {:ok, <<^count::size(16),0,0,ressize::size(16),response::binary>>} = :gen_tcp.recv(socket, 0, timeout)
-    ^ressize = :erlang.byte_size(response)
-    response
+  defp init(params) do
+    ip = Keyword.fetch!(params, :ip)
+    port = Keyword.fetch!(params, :port)
+    timeout = Keyword.get(params, :timeout, @to)
+    {:ok, socket} = :gen_tcp.connect(ip, port,
+      [:binary, packet: :raw, active: :false], timeout)
+    {socket, 0}
   end
 
 end

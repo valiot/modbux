@@ -1,10 +1,10 @@
-defmodule F6Test do
+defmodule F06Test do
   use ExUnit.Case
   alias Modbus.Request
   alias Modbus.Response
   alias Modbus.Model
 
-  test "Write 0x6162 to Single Analog Output" do
+  test "Write 0x6162 to Single Holding Register" do
     state0 = %{ 0x50=>%{ {:hr, 0x5152}=>0 } }
     state1 = %{ 0x50=>%{ {:hr, 0x5152}=>0x6162 } }
     val0 = 0x6162
@@ -12,10 +12,10 @@ defmodule F6Test do
     req0 = <<0x50, 6, 0x51, 0x52, 0x61, 0x62>>
     res0 = <<0x50, 6, 0x51, 0x52, 0x61, 0x62>>
     ^req0 = Request.pack(cmd0)
-    {^cmd0, <<>>} = Request.parse(req0)
+    ^cmd0 = Request.parse(req0)
     {^state1, nil} = Model.apply(state0, cmd0)
     ^res0 = Response.pack(cmd0, nil)
-    {nil, <<>>} = Response.parse(cmd0, res0)
+    nil = Response.parse(cmd0, res0)
   end
 
 end

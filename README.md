@@ -2,13 +2,14 @@
 
 Modbus library with TCP implementation.
 
-- For RTU see [baud](https://github.com/samuelventura/baud).
-- For TCP-to-RTU translation see [baud](https://github.com/samuelventura/baud) or [serex](https://github.com/samuelventura/serex).
+- For Serial RTU see [baud](https://github.com/samuelventura/baud).
+- For TCP-to-RTU translation see [baud](https://github.com/samuelventura/baud)
 
 Based on:
 
 - http://modbus.org/docs/PI_MBUS_300.pdf
 - http://modbus.org/docs/Modbus_Messaging_Implementation_Guide_V1_0b.pdf
+- http://modbus.org/docs/Modbus_over_serial_line_V1_02.pdf
 
 ## Installation and Usage
 
@@ -16,7 +17,7 @@ Based on:
 
   ```elixir
   def deps do
-    [{:modbus, "~> 0.2.0"}]
+    [{:modbus, "~> 0.3.0"}]
   end
   ```
 
@@ -25,32 +26,51 @@ Based on:
   ```elixir
   alias Modbus.Request
   alias Modbus.Response
-  #read 1 coil from slave 5 address 2300
-  cmd = {:rc, 5, 2300, 1}
+  #read 1 from input at slave 1 address 0
+  cmd = {:ri, 1, 0, 2}
   req = Request.pack(cmd)
-  #send request thru a serial (RTU, ASCII) or socket (TCP) channel
+  #send request thru a serial or socket channel
   res = channel.send(req)
-  {[1], tail} = Response.parse(cmd, res)
+  [1, 0] = Response.parse(cmd, res)
   ```
 
 3. Use as TCP master
 
   ```elixir
   alias Modbus.Master
-  #start master TCP server
-  {:ok, pid} = Master.start_link([ip: {10,77,0,211}, port: 8899])
-  #force 0 to coil at slave 1 address 3000
-  :ok = Master.tcp(pid, {:fc, 1, 3000, 0}, 400)
-  #read 0 from coil at slave 1 address 3000
-  {:ok, [0]} = Master.tcp(pid, {:rc, 1, 3000, 1}, 400)
-  #force 10 to coils at slave 1 address 3000 to 3001
-  :ok = Master.tcp(pid, {:fc, 1, 3000, [1, 0]}, 400)
-  #read 10 from coils at slave 1 address 3000 to 3001
-  {:ok, [1, 0]} = Master.tcp(pid, {:rc, 1, 3000, 2}, 400)
-  #preset 55AA to holding register at slave 1 address 3300
-  :ok = Master.tcp(pid, {:phr, 1, 3300, 0x55AA}, 400)
-  #read 55AA from holding register at slave 1 address 3300 to 3301
-  {:ok, [0x55AA]} = Master.tcp(pid, {:rhr, 1, 3300, 1}, 400)
+
+  #opto22 rack configured as follows
+  # m0 - 4p digital input
+  #  p0 - 24V
+  #  p1 - 0V
+  #  p2 - m1.p2
+  #  p3 - m1.p3
+  # m1 - 4p digital output
+  #  p0 - NC
+  #  p1 - NC
+  #  p2 - m0.p2
+  #  p3 - m0.p3
+
+  {:ok, pid} = Master.start_link([ip: {10,77,0,2}, port: 502])
+
+  #read 1 from input at slave 1 address 0 (m0.p0)
+  {:ok, [1]} = Master.tcp(pid, {:ri, 1, 0, 1})
+  #read 0 from input at slave 1 address 1 (m0.p1)
+  {:ok, [0]} = Master.tcp(pid, {:ri, 1, 1, 1})
+  #read both previous inputs at once
+  {:ok, [1, 0]} = Master.tcp(pid, {:ri, 1, 0, 2})
+
+  #turn off coil at slave 1 address 6 (m1.p2)
+  :ok = Master.tcp(pid, {:fc, 1, 6, 0})
+  :timer.sleep(50) #let output settle
+  #read 0 from input at slave 1 address 2 (m0.p2)
+  {:ok, [0]} = Master.tcp(pid, {:ri, 1, 2, 1})
+
+  #turn on coil at slave 1 address 7 (m1.p3)
+  :ok = Master.tcp(pid, {:fc, 1, 7, 1})
+  :timer.sleep(50) #let output settle
+  #read 1 from input at slave 1 address 3 (m0.p3)
+  {:ok, [1]} = Master.tcp(pid, {:ri, 1, 3, 1})
   ```
 
 ## Roadmap
@@ -58,6 +78,7 @@ Based on:
 Version 0.3.0
 
 - [ ] Modbus TCP slave
+- [x] API breaking changes
 
 Version 0.2.0
 

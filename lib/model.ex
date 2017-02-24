@@ -2,7 +2,7 @@ defmodule Modbus.Model do
   @moduledoc false
 
   def apply(state, {:rc, slave, address, count}) do
-    reads(state, {slave, :hr, address, count})
+    reads(state, {slave, :c, address, count})
   end
 
   def apply(state, {:ri, slave, address, count}) do
@@ -18,11 +18,11 @@ defmodule Modbus.Model do
   end
 
   def apply(state, {:fc, slave, address, value}) when is_integer(value) do
-    write(state, {slave, :hr, address, value})
+    write(state, {slave, :c, address, value})
   end
 
   def apply(state, {:fc, slave, address, values}) when is_list(values) do
-    writes(state, {slave, :hr, address, values})
+    writes(state, {slave, :c, address, values})
   end
 
   def apply(state, {:phr, slave, address, value}) when is_integer(value) do
@@ -34,9 +34,9 @@ defmodule Modbus.Model do
   end
 
   defp reads(state, {slave, type, address, count}) do
-    cmap = Map.fetch!(state, slave)
+    map = Map.fetch!(state, slave)
     list = for point <- address..address+count-1 do
-      Map.fetch!(cmap, {type, point})
+      Map.fetch!(map, {type, point})
     end
     {state, list}
   end

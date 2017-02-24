@@ -1,36 +1,36 @@
-defmodule F2Test do
+defmodule F02Test do
   use ExUnit.Case
   alias Modbus.Request
   alias Modbus.Response
   alias Modbus.Model
 
-  test "Read 0 from Single Digital Input" do
+  test "Read 0 from Single Input" do
     state0 = %{ 0x50=>%{ {:i, 0x5152}=>0 } }
     cmd0 = {:ri, 0x50, 0x5152, 1}
     req0 = <<0x50, 2, 0x51, 0x52, 0, 1>>
     res0 = <<0x50, 2, 1, 0x00>>
     val0 = [0]
     ^req0 = Request.pack(cmd0)
-    {^cmd0, <<>>} = Request.parse(req0)
+    ^cmd0 = Request.parse(req0)
     {^state0, ^val0} = Model.apply(state0, cmd0)
     ^res0 = Response.pack(cmd0, val0)
-    {^val0, <<>>} = Response.parse(cmd0, res0)
+    ^val0 = Response.parse(cmd0, res0)
   end
 
-  test "Read 1 from Single Digital Input" do
+  test "Read 1 from Single Input" do
     state0 = %{ 0x50=>%{ {:i, 0x5152}=>1 } }
     cmd0 = {:ri, 0x50, 0x5152, 1}
     req0 = <<0x50, 2, 0x51, 0x52, 0, 1>>
     res0 = <<0x50, 2, 1, 0x01>>
     val0 = [1]
     ^req0 = Request.pack(cmd0)
-    {^cmd0, <<>>} = Request.parse(req0)
+    ^cmd0 = Request.parse(req0)
     {^state0, ^val0} = Model.apply(state0, cmd0)
     ^res0 = Response.pack(cmd0, val0)
-    {^val0, <<>>} = Response.parse(cmd0, res0)
+    ^val0 = Response.parse(cmd0, res0)
   end
 
-  test "Read 011 from Multiple Digital Inputs" do
+  test "Read 011 from Multiple Inputs" do
     state0 = %{ 0x50=>%{
       {:i, 0x5152}=>0, {:i, 0x5153}=>1, {:i, 0x5154}=>1,
     } }
@@ -39,13 +39,13 @@ defmodule F2Test do
     res0 = <<0x50, 2, 1, 0x06>>
     val0 = [0,1,1]
     ^req0 = Request.pack(cmd0)
-    {^cmd0, <<>>} = Request.parse(req0)
+    ^cmd0 = Request.parse(req0)
     {^state0, ^val0} = Model.apply(state0, cmd0)
     ^res0 = Response.pack(cmd0, val0)
-    {^val0, <<>>} = Response.parse(cmd0, res0)
+    ^val0 = Response.parse(cmd0, res0)
   end
 
-  test "Read 0011 1100 0101 from Multiple Digital Inputs" do
+  test "Read 0011 1100 0101 from Multiple Inputs" do
     state0 = %{ 0x50=>%{
       {:i, 0x5152}=>0, {:i, 0x5153}=>0, {:i, 0x5154}=>1, {:i, 0x5155}=>1,
       {:i, 0x5156}=>1, {:i, 0x5157}=>1, {:i, 0x5158}=>0, {:i, 0x5159}=>0,
@@ -56,10 +56,10 @@ defmodule F2Test do
     res0 = <<0x50, 2, 2, 0x3C, 0x0A>>
     val0 = [0,0,1,1, 1,1,0,0, 0,1,0,1]
     ^req0 = Request.pack(cmd0)
-    {^cmd0, <<>>} = Request.parse(req0)
+    ^cmd0 = Request.parse(req0)
     {^state0, ^val0} = Model.apply(state0, cmd0)
     ^res0 = Response.pack(cmd0, val0)
-    {^val0, <<>>} = Response.parse(cmd0, res0)
+    ^val0 = Response.parse(cmd0, res0)
   end
 
 end

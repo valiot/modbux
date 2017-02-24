@@ -3,7 +3,7 @@ defmodule Modbus.Mixfile do
 
   def project do
     [app: :modbus,
-     version: "0.2.0",
+     version: "0.3.0",
      elixir: "~> 1.3",
      compilers: [:elixir, :app],
      build_embedded: Mix.env == :prod,
@@ -40,8 +40,6 @@ defmodule Modbus.Mixfile do
   defp aliases do
     [
       "sample": ["run scripts/sample.exs"],
-      "snappac": ["run scripts/snappac.exs"],
-      "modport": ["run scripts/modport.exs"],
     ]
   end
 end

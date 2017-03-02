@@ -8,6 +8,7 @@ Modbus library with TCP implementation.
 
 Based on:
 
+- Many generous authors and coders across the web
 - http://modbus.org/docs/PI_MBUS_300.pdf
 - http://modbus.org/docs/Modbus_Messaging_Implementation_Guide_V1_0b.pdf
 - http://modbus.org/docs/Modbus_over_serial_line_V1_02.pdf
@@ -18,7 +19,7 @@ Based on:
 
   ```elixir
   def deps do
-    [{:modbus, "~> 0.3.0"}]
+    [{:modbus, "~> 0.3.1"}]
   end
   ```
 
@@ -85,6 +86,11 @@ Based on:
   ```
 
 ## Roadmap
+
+Version 0.3.1
+
+- [x] Added response length prediction
+- [x] Added a couple of helpers to tcp and rtu api
 
 Version 0.3.0
 

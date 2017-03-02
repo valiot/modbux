@@ -84,6 +84,30 @@ defmodule Modbus.Response do
     nil
   end
 
+  def length({:rc, _slave, _address, count}) do
+    3 + Helper.byte_count(count)
+  end
+
+  def length({:ri, _slave, _address, count}) do
+    3 + Helper.byte_count(count)
+  end
+
+  def length({:rhr, _slave, _address, count}) do
+    3 + 2 * count
+  end
+
+  def length({:rir, _slave, _address, count}) do
+    3 + 2 * count
+  end
+
+  def length({:fc, _slave, _address, _}) do
+    6
+  end
+
+  def length({:phr, _slave, _address, _}) do
+    6
+  end
+
   defp reads(slave, function, data) do
     bytes = :erlang.byte_size(data)
     <<slave, function, bytes, data::binary>>

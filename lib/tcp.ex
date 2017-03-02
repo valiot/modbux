@@ -1,7 +1,26 @@
 defmodule Modbus.Tcp do
   @moduledoc false
+  alias Modbus.Request
+  alias Modbus.Response
 
   #http://www.simplymodbus.ca/TCP.htm
+
+  def pack_req(cmd, transid) do
+    cmd |> Request.pack |> wrap(transid)
+  end
+
+  def parse_req(wraped) do
+    {pack, transid} = wraped |> unwrap
+    {pack |> Request.parse, transid}
+  end
+
+  def pack_res(cmd, values, transid) do
+    cmd |> Response.pack(values) |> wrap(transid)
+  end
+
+  def parse_res(cmd, wraped, transid) do
+    Response.parse(cmd, wraped |> unwrap(transid))
+  end
 
   def wrap(payload, transid) do
     size =  :erlang.byte_size(payload)

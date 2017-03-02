@@ -36,6 +36,7 @@ defmodule ResponseTest do
 
   defp pp(packet, cmd, vals) do
     assert packet == Response.pack(cmd, vals)
+    assert Response.length(cmd) == byte_size(packet)
     assert vals == Response.parse(cmd, packet)
   end
 

@@ -48,8 +48,6 @@ defmodule Modbus.Master do
   {:ok, [0xc0a0, 0x0000, 0x40a0, 0x0000]} = Master.tcp(pid, {:rir, 1, 24, 4})
   ```
   """
-  alias Modbus.Request
-  alias Modbus.Response
   alias Modbus.Tcp
 
   @to 2000
@@ -104,11 +102,10 @@ defmodule Modbus.Master do
   """
   def tcp(pid, cmd, timeout \\ @to) do
     Agent.get_and_update(pid, fn {socket, transid} ->
-      request = Request.pack(cmd)
-      :ok = :gen_tcp.send(socket, Tcp.wrap(request, transid))
-      {:ok, data} = :gen_tcp.recv(socket, 0, timeout)
-      response = Tcp.unwrap(data, transid)
-      values = Response.parse(cmd, response)
+      request = Tcp.pack_req(cmd, transid)
+      :ok = :gen_tcp.send(socket, request)
+      {:ok, response} = :gen_tcp.recv(socket, 0, timeout)
+      values = Tcp.parse_res(cmd, response, transid)
       case values do
         nil -> {:ok, {socket, transid + 1}}
         _ -> {{:ok, values}, {socket, transid + 1}}

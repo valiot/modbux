@@ -1,6 +1,24 @@
 defmodule Modbus.Rtu do
   alias Modbus.Helper
+  alias Modbus.Request
+  alias Modbus.Response
   @moduledoc false
+
+  def pack_req(cmd) do
+    cmd |> Request.pack |> wrap
+  end
+
+  def parse_req(wraped) do
+    wraped |> unwrap |> Request.parse
+  end
+
+  def pack_res(cmd, values) do
+    cmd |> Response.pack(values) |> wrap
+  end
+
+  def parse_res(cmd, wraped) do
+    Response.parse(cmd, wraped |> unwrap)
+  end
 
   def wrap(payload) do
     crc = Helper.crc(payload)

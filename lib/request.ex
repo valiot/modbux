@@ -74,6 +74,38 @@ defmodule Modbus.Request do
     {:phr, slave, address, values}
   end
 
+  def length({:rc, _slave, _address, _count}) do
+    6
+  end
+
+  def length({:ri, _slave, _address, _count}) do
+    6
+  end
+
+  def length({:rhr, _slave, _address, _count}) do
+    6
+  end
+
+  def length({:rir, _slave, _address, _count}) do
+    6
+  end
+
+  def length({:fc, _slave, _address, value}) when is_integer(value) do
+    6
+  end
+
+  def length({:phr, _slave, _address, value}) when is_integer(value) do
+    6
+  end
+
+  def length({:fc, _slave, _address, values}) when is_list(values) do
+    7 + Helper.byte_count(Enum.count(values))
+  end
+
+  def length({:phr, _slave, _address, values}) when is_list(values) do
+    7 + 2 * Enum.count(values);
+  end
+
   defp reads(_type, slave, function, address, count) do
     <<slave, function, address::16, count::16>>
   end

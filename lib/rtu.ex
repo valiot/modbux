@@ -24,6 +24,10 @@ defmodule Modbus.Rtu do
     Response.length(cmd) + 2;
   end
 
+  def req_len(cmd) do
+    Request.length(cmd) + 2;
+  end
+
   def wrap(payload) do
     crc = Helper.crc(payload)
     <<payload::binary, crc::16>>

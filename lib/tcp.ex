@@ -26,6 +26,10 @@ defmodule Modbus.Tcp do
     Response.length(cmd) + 6;
   end
 
+  def req_len(cmd) do
+    Request.length(cmd) + 6;
+  end
+
   def wrap(payload, transid) do
     size =  :erlang.byte_size(payload)
     <<transid::16, 0, 0, size::16, payload::binary>>

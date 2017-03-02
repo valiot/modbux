@@ -44,6 +44,4 @@ defmodule F01Test do
     pp1 cmd0, req0, res0, val0, state0
   end
 
-
-
 end

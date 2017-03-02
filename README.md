@@ -1,6 +1,6 @@
 # modbus
 
-Modbus library with TCP implementation.
+Modbus library with TCP Master & Slave implementation.
 
 - For Serial RTU see [baud](https://github.com/samuelventura/baud).
 - For TCP-to-RTU translation see [forward](https://github.com/samuelventura/forward).
@@ -17,27 +17,11 @@ Based on:
 
   ```elixir
   def deps do
-    [{:modbus, "~> 0.3.1"}]
+    [{:modbus, "~> 0.3.3"}]
   end
   ```
 
-2. Generic use as a pure packing and parsing library
-
-  ```elixir
-  alias Modbus.Request
-  alias Modbus.Response
-  alias Modbus.Tcp
-  #read 1 from input at slave 1 address 0
-  cmd = {:ri, 1, 0, 2}
-  req = Request.pack(cmd)
-  wreq = Tcp.wrap(req, transid)
-  #send wrapped request thru a serial or socket channel
-  wres = :channel.send_and_receive(wreq)
-  res = Tcp.unwrap(wres, transid)
-  [1, 0] = Response.parse(cmd, res)
-  ```
-
-3. Use as TCP master
+2. Use as TCP master:
 
   ```elixir
   alias Modbus.Tcp.Master
@@ -81,6 +65,24 @@ Based on:
 
   #read previous analog channels as input registers
   {:ok, [0xc0a0, 0x0000, 0x40a0, 0x0000]} = Master.exec(pid, {:rir, 1, 24, 4})
+  ```
+
+  3. Use as TCP slave:
+
+  ```elixir
+  alias Modbus.Tcp.Slave
+  alias Modbus.Tcp.Master
+
+  #start your slave with a shared model
+  model = %{ 0x50=>%{ {:c, 0x5152}=>0 } }
+  {:ok, spid} = Slave.start_link([model: model])
+  #get the assigned tcp port
+  {:ok, %{port: port}} = Slave.id(spid)
+  
+  #interact with it
+  {:ok, mpid} = Master.start_link([ip: {127.0.0.1}, port: port])
+  {:ok, [0]} = Master.exec(mpid, {:rc, 0x50, 0x5152, 1})
+  ...
   ```
 
 ## Roadmap

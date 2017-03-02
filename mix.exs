@@ -3,7 +3,7 @@ defmodule Modbus.Mixfile do
 
   def project do
     [app: :modbus,
-     version: "0.3.2",
+     version: "0.3.3",
      elixir: "~> 1.3",
      compilers: [:elixir, :app],
      build_embedded: Mix.env == :prod,
@@ -25,7 +25,7 @@ defmodule Modbus.Mixfile do
   end
 
   defp description do
-    "Modbus library with TCP implementation."
+    "Modbus library with TCP Master & Slave implementation."
   end
 
   defp package do
@@ -39,7 +39,7 @@ defmodule Modbus.Mixfile do
 
   defp aliases do
     [
-      "sample": ["run scripts/sample.exs"],
+      "opto22": ["run scripts/opto22.exs"],
     ]
   end
 end

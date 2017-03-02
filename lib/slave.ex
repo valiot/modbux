@@ -37,9 +37,9 @@ defmodule Modbus.Tcp.Slave do
   end
 
   defp name(ip, port) do
-    {i0, i1, i2, i3} = ip
+    ips = :inet_parse.ntoa(ip)
     mod = Atom.to_string(__MODULE__)
-    "#{mod}_#{i0}_#{i1}_#{i2}_#{i3}_#{port}"
+    "#{mod}:#{ips}:#{port}"
   end
 
   defp accept(listener, sup, model) do

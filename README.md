@@ -89,6 +89,7 @@ Based on:
 
 Version 0.3.1
 
+- [x] Added master/slave test for each code
 - [x] Added response length prediction
 - [x] Added a couple of helpers to tcp and rtu api
 

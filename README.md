@@ -4,7 +4,6 @@ Modbus library with TCP implementation.
 
 - For Serial RTU see [baud](https://github.com/samuelventura/baud).
 - For TCP-to-RTU translation see [forward](https://github.com/samuelventura/forward).
-- For Modbus Slave see [forward](https://github.com/samuelventura/forward).
 
 Based on:
 
@@ -33,7 +32,7 @@ Based on:
   req = Request.pack(cmd)
   wreq = Tcp.wrap(req, transid)
   #send wrapped request thru a serial or socket channel
-  wres = :gen_tcp.send(socket, wreq)
+  wres = :channel.send_and_receive(wreq)
   res = Tcp.unwrap(wres, transid)
   [1, 0] = Response.parse(cmd, res)
   ```
@@ -85,6 +84,10 @@ Based on:
   ```
 
 ## Roadmap
+
+Version 0.3.3
+
+- [ ] Shared model slave implementation
 
 Version 0.3.2
 

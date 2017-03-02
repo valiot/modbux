@@ -22,6 +22,10 @@ defmodule Modbus.Tcp do
     Response.parse(cmd, wraped |> unwrap(transid))
   end
 
+  def res_len(cmd) do
+    Response.length(cmd) + 6;
+  end
+
   def wrap(payload, transid) do
     size =  :erlang.byte_size(payload)
     <<transid::16, 0, 0, size::16, payload::binary>>

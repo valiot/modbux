@@ -103,8 +103,9 @@ defmodule Modbus.Master do
   def tcp(pid, cmd, timeout \\ @to) do
     Agent.get_and_update(pid, fn {socket, transid} ->
       request = Tcp.pack_req(cmd, transid)
+      length = Tcp.res_len(cmd)
       :ok = :gen_tcp.send(socket, request)
-      {:ok, response} = :gen_tcp.recv(socket, 0, timeout)
+      {:ok, response} = :gen_tcp.recv(socket, length, timeout)
       values = Tcp.parse_res(cmd, response, transid)
       case values do
         nil -> {:ok, {socket, transid + 1}}

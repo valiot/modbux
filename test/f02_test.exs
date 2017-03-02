@@ -1,10 +1,6 @@
 defmodule F02Test do
   use ExUnit.Case
-  alias Modbus.Request
-  alias Modbus.Response
-  alias Modbus.Model
-  alias Modbus.Rtu
-  alias Modbus.Tcp
+  import TestHelper
 
   test "Read 0 from Single Input" do
     state0 = %{ 0x50=>%{ {:i, 0x5152}=>0 } }
@@ -12,7 +8,7 @@ defmodule F02Test do
     req0 = <<0x50, 2, 0x51, 0x52, 0, 1>>
     res0 = <<0x50, 2, 1, 0x00>>
     val0 = [0]
-    pp cmd0, req0, res0, val0, state0
+    pp1 cmd0, req0, res0, val0, state0
   end
 
   test "Read 1 from Single Input" do
@@ -21,7 +17,7 @@ defmodule F02Test do
     req0 = <<0x50, 2, 0x51, 0x52, 0, 1>>
     res0 = <<0x50, 2, 1, 0x01>>
     val0 = [1]
-    pp cmd0, req0, res0, val0, state0
+    pp1 cmd0, req0, res0, val0, state0
   end
 
   test "Read 011 from Multiple Inputs" do
@@ -32,7 +28,7 @@ defmodule F02Test do
     req0 = <<0x50, 2, 0x51, 0x52, 0, 3>>
     res0 = <<0x50, 2, 1, 0x06>>
     val0 = [0,1,1]
-    pp cmd0, req0, res0, val0, state0
+    pp1 cmd0, req0, res0, val0, state0
   end
 
   test "Read 0011 1100 0101 from Multiple Inputs" do
@@ -45,27 +41,7 @@ defmodule F02Test do
     req0 = <<0x50, 2, 0x51, 0x52, 0, 12>>
     res0 = <<0x50, 2, 2, 0x3C, 0x0A>>
     val0 = [0,0,1,1, 1,1,0,0, 0,1,0,1]
-    pp cmd0, req0, res0, val0, state0
-  end
-
-  defp pp(cmd, req, res, val, state) do
-    assert req == Request.pack(cmd)
-    assert cmd == Request.parse(req)
-    assert {state, val} == Model.apply(state, cmd)
-    assert res == Response.pack(cmd, val)
-    assert val == Response.parse(cmd, res)
-    #length predition
-    assert byte_size(res) == Response.length(cmd)
-    #rtu
-    rtu_req = Rtu.pack_req(cmd)
-    assert cmd == Rtu.parse_req(rtu_req)
-    rtu_res = Rtu.pack_res(cmd, val)
-    assert val == Rtu.parse_res(cmd, rtu_res)
-    #tcp
-    tcp_req = Tcp.pack_req(cmd, 1)
-    assert {cmd, 1} == Tcp.parse_req(tcp_req)
-    tcp_res = Tcp.pack_res(cmd, val, 1)
-    assert val == Tcp.parse_res(cmd, tcp_res, 1)
+    pp1 cmd0, req0, res0, val0, state0
   end
 
 end

@@ -3,8 +3,6 @@ defmodule Modbus.Tcp do
   alias Modbus.Request
   alias Modbus.Response
 
-  #http://www.simplymodbus.ca/TCP.htm
-
   def pack_req(cmd, transid) do
     cmd |> Request.pack |> wrap(transid)
   end

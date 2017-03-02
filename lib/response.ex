@@ -1,6 +1,6 @@
 defmodule Modbus.Response do
-  alias Modbus.Helper
   @moduledoc false
+  alias Modbus.Helper
 
   def pack({:rc, slave, _address, count}, values) do
     ^count = Enum.count(values)

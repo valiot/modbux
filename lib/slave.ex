@@ -1,4 +1,5 @@
 defmodule Modbus.Tcp.Slave do
+  @moduledoc false
   import Supervisor.Spec
   alias Modbus.Model.Shared
   alias Modbus.Tcp

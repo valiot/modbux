@@ -1,6 +1,6 @@
 defmodule Modbus.Request do
-  alias Modbus.Helper
   @moduledoc false
+  alias Modbus.Helper
 
   def pack({:rc, slave, address, count}) do
     reads(:d, slave, 1, address, count)

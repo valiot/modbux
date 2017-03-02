@@ -15,8 +15,8 @@ defmodule Modbus.Model.Shared do
 
   def apply(pid, cmd) do
     Agent.get_and_update(pid, fn model ->
-      {model2, values} = Model.apply(model, cmd)
-      {{:ok, values}, model2}
+      {new, values} = Model.apply(model, cmd)
+      {{:ok, values}, new}
     end)
   end
 

@@ -10,10 +10,10 @@ defmodule TestHelper do
   alias Modbus.Tcp.Master
   alias Modbus.Tcp.Slave
 
-  def pp1(cmd, req, res, val, state) do
+  def pp1(cmd, req, res, val, model) do
     assert req == Request.pack(cmd)
     assert cmd == Request.parse(req)
-    assert {state, val} == Model.apply(state, cmd)
+    assert {model, val} == Model.apply(model, cmd)
     assert res == Response.pack(cmd, val)
     assert val == Response.parse(cmd, res)
     #length predition
@@ -34,16 +34,18 @@ defmodule TestHelper do
     assert byte_size(tcp_res) == Tcp.res_len(cmd)
     assert byte_size(tcp_req) == Tcp.req_len(cmd)
     #master
-    {:ok, slave_pid} = Slave.start_link([model: state])
+    {:ok, slave_pid} = Slave.start_link([model: model])
     {:ok, %{port: port}} =  Slave.id(slave_pid)
     {:ok, master_pid} = Master.start_link([port: port, ip: {127,0,0,1}])
-    assert {:ok, val} == Master.exec(master_pid, cmd)
+    for _ <-0..10 do
+      assert {:ok, val} == Master.exec(master_pid, cmd)
+    end
   end
 
-  def pp2(cmd, req, res, state0, state1) do
+  def pp2(cmd, req, res, model0, model1) do
     assert req == Request.pack(cmd)
     assert cmd == Request.parse(req)
-    assert {state1, nil} == Model.apply(state0, cmd)
+    assert {model1, nil} == Model.apply(model0, cmd)
     assert res == Response.pack(cmd, nil)
     assert nil == Response.parse(cmd, res)
     #length predition
@@ -61,10 +63,12 @@ defmodule TestHelper do
     assert nil == Tcp.parse_res(cmd, tcp_res, 1)
     assert byte_size(tcp_res) == Tcp.res_len(cmd)
     #master
-    {:ok, slave_pid} = Slave.start_link([model: state0])
+    {:ok, slave_pid} = Slave.start_link([model: model0])
     {:ok, %{port: port}} =  Slave.id(slave_pid)
     {:ok, master_pid} = Master.start_link([port: port, ip: {127,0,0,1}])
-    assert :ok == Master.exec(master_pid, cmd)
+    for _ <-0..10 do
+      assert :ok == Master.exec(master_pid, cmd)
+    end
   end
 
 end

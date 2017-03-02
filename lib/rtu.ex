@@ -1,8 +1,8 @@
 defmodule Modbus.Rtu do
+  @moduledoc false
   alias Modbus.Helper
   alias Modbus.Request
   alias Modbus.Response
-  @moduledoc false
 
   def pack_req(cmd) do
     cmd |> Request.pack |> wrap

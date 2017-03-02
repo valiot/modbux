@@ -31,7 +31,7 @@ defmodule Modbus.Mixfile do
   defp package do
     [
      name: :modbus,
-     files: ["lib", "test", "scripts", "mix.*", "*.exs", "*.md", ".gitignore", "LICENSE"],
+     files: ["lib", "test", "script", "mix.*", "*.exs", "*.md", ".gitignore", "LICENSE"],
      maintainers: ["Samuel Ventura"],
      licenses: ["Apache 2.0"],
      links: %{"GitHub" => "https://github.com/samuelventura/modbus/"}]
@@ -39,7 +39,7 @@ defmodule Modbus.Mixfile do
 
   defp aliases do
     [
-      "opto22": ["run scripts/opto22.exs"],
+      "opto22": ["run script/opto22.exs"],
     ]
   end
 end

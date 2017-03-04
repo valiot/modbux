@@ -17,7 +17,7 @@ Based on:
 
   ```elixir
   def deps do
-    [{:modbus, "~> 0.3.3"}]
+    [{:modbus, "~> 0.3.4"}]
   end
   ```
 
@@ -88,6 +88,10 @@ Based on:
   ```
 
 ## Roadmap
+
+Version 0.3.4
+
+- [x] Fixed RTU CRC endianess
 
 Version 0.3.3
 

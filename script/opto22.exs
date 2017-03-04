@@ -1,3 +1,4 @@
+#run with: mix opto22s
 alias Modbus.Tcp.Master
 
 # opto22 rack configured as follows

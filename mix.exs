@@ -40,6 +40,7 @@ defmodule Modbus.Mixfile do
   defp aliases do
     [
       "opto22": ["run script/opto22.exs"],
+      "slave": ["run script/slave.exs"],
     ]
   end
 end

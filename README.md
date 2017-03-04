@@ -24,6 +24,7 @@ Based on:
 2. Use as TCP master:
 
   ```elixir
+  #run with: mix opto22s
   alias Modbus.Tcp.Master
 
   # opto22 rack configured as follows
@@ -67,9 +68,10 @@ Based on:
   {:ok, [0xc0a0, 0x0000, 0x40a0, 0x0000]} = Master.exec(pid, {:rir, 1, 24, 4})
   ```
 
-  3. Use as TCP slave:
+3. Use as TCP slave:
 
   ```elixir
+  #run with: mix slave
   alias Modbus.Tcp.Slave
   alias Modbus.Tcp.Master
 
@@ -80,7 +82,7 @@ Based on:
   {:ok, %{port: port}} = Slave.id(spid)
 
   #interact with it
-  {:ok, mpid} = Master.start_link([ip: {127.0.0.1}, port: port])
+  {:ok, mpid} = Master.start_link([ip: {127,0,0,1}, port: port])
   {:ok, [0]} = Master.exec(mpid, {:rc, 0x50, 0x5152, 1})
   ...
   ```
@@ -89,7 +91,7 @@ Based on:
 
 Version 0.3.3
 
-- [ ] Shared model slave implementation
+- [x] Shared model slave implementation
 
 Version 0.3.2
 

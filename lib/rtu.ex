@@ -29,14 +29,14 @@ defmodule Modbus.Rtu do
   end
 
   def wrap(payload) do
-    crc = Helper.crc(payload)
-    <<payload::binary, crc::16>>
+    <<crc_hi, crc_lo>> = Helper.crc(payload)
+    <<payload::binary, crc_hi, crc_lo>>
   end
 
   def unwrap(data) do
     size = :erlang.byte_size(data)-2
-    <<payload::binary-size(size), crc::16>> = data
-    ^crc = Helper.crc(payload)
+    <<payload::binary-size(size), crc_hi, crc_lo>> = data
+    <<^crc_hi, ^crc_lo>> = Helper.crc(payload)
     payload
   end
 

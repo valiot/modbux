@@ -46,12 +46,12 @@ defmodule Modbus.Helper do
     crc(data, 0xff, 0xff)
   end
 
-  defp crc(<<>>, hi, lo), do: (hi<<<8) ||| lo
+  defp crc(<<>>, hi, lo), do: <<hi, lo>>
   defp crc(data, hi, lo) do
     <<first, tail::binary>> = data
-    index = lo ^^^ first
-    lo = hi ^^^ Enum.at(@hi, index)
-    hi = Enum.at(@lo, index)
+    index = hi ^^^ first
+    hi = lo ^^^ Enum.at(@hi, index)
+    lo = Enum.at(@lo, index)
     crc(tail, hi, lo)
   end
 

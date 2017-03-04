@@ -28,15 +28,19 @@ defmodule Modbus.Rtu do
     Request.length(cmd) + 2;
   end
 
+  #CRC is little endian
+  #http://modbus.org/docs/Modbus_over_serial_line_V1_02.pdf page 13
   def wrap(payload) do
-    crc = Helper.crc(payload)
-    <<payload::binary, crc::16>>
+    <<crc_hi, crc_lo>> = Helper.crc(payload)
+    <<payload::binary, crc_lo, crc_hi>>
   end
 
+  #CRC is little endian
+  #http://modbus.org/docs/Modbus_over_serial_line_V1_02.pdf page 13
   def unwrap(data) do
-    size = :erlang.byte_size(data)-2
-    <<payload::binary-size(size), crc::16>> = data
-    ^crc = Helper.crc(payload)
+    size = :erlang.byte_size(data) - 2
+    <<payload::binary-size(size), crc_lo, crc_hi>> = data
+    <<^crc_hi, ^crc_lo>> = Helper.crc(payload)
     payload
   end
 

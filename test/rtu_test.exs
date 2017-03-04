@@ -2,19 +2,16 @@ defmodule RtuTest do
   use ExUnit.Case
   alias Modbus.Rtu
 
-  #http://www.tahapaksu.com/crc/
-  #https://www.lammertbies.nl/comm/info/crc-calculation.html
   test "wrap test" do
-    p  0xFFFF, <<>>
-    p  0x40BF, <<0>>
-    p  0x70C0, <<0,1>>
-    p  0x91F1, <<0,1,2>>
-    p  0x8510, <<0,1,2,3>>
+    p  <<0xCB, 0x4F>>, <<0x01, 0x05, 0x0B, 0xB8, 0x00, 0x00>>
+    p  <<0x3B, 0x0E>>, <<0x01, 0x05, 0x0B, 0xB8, 0xFF, 0x00>>
+    p  <<0xCB, 0x7F>>, <<0x01, 0x01, 0x0B, 0xB8, 0x00, 0x01>>
+    p  <<0x88, 0x51>>, <<0x01, 0x01, 0x01, 0x00>>
   end
 
-  defp p(crc, payload) do
-    assert <<payload::binary, crc::16>> == payload |> Rtu.wrap
-    assert payload == <<payload::binary, crc::16>> |> Rtu.unwrap
+  defp p(<<crc_hi, crc_lo>>, payload) do
+    assert <<payload::binary, crc_lo, crc_hi>> == payload |> Rtu.wrap
+    assert payload == <<payload::binary, crc_lo, crc_hi>> |> Rtu.unwrap
   end
 
 end

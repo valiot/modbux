@@ -2,8 +2,7 @@
 
 Modbus library with TCP Master & Slave implementation.
 
-- For Serial RTU see [baud](https://github.com/samuelventura/baud).
-- For TCP-to-RTU translation see [forward](https://github.com/samuelventura/forward).
+For Serial RTU see [baud](https://github.com/samuelventura/baud).
 
 Based on:
 

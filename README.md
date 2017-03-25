@@ -23,7 +23,7 @@ Based on:
 2. Use as TCP master:
 
   ```elixir
-  #run with: mix opto22s
+  #run with: mix opto22
   alias Modbus.Tcp.Master
 
   # opto22 rack configured as follows

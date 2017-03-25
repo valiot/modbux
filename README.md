@@ -53,10 +53,15 @@ Based on:
   #alternate m1.p2 and m1.p3
   :ok = Master.exec(pid, {:fc, 1, 6, [1, 0]})
 
+  #https://www.h-schmidt.net/FloatConverter/IEEE754.html
   #write -5V (IEEE 754 float) to m3.p0
+  #<<-5::float-32>> -> <<192, 160, 0, 0>>
   :ok = Master.exec(pid, {:phr, 1, 24, [0xc0a0, 0x0000]})
+  :ok = Master.exec(pid, {:phr, 1, 24, Modbus.IEEE754.to_2_regs(-5.0)})
   #write +5V (IEEE 754 float) to m3.p1
+  #<<+5::float-32>> -> <<64, 160, 0, 0>>
   :ok = Master.exec(pid, {:phr, 1, 26, [0x40a0, 0x0000]})
+  :ok = Master.exec(pid, {:phr, 1, 26, Modbus.IEEE754.to_2_regs(+5.0)})
 
   :timer.sleep(20) #outputs settle delay
 
@@ -65,6 +70,8 @@ Based on:
 
   #read previous analog channels as input registers
   {:ok, [0xc0a0, 0x0000, 0x40a0, 0x0000]} = Master.exec(pid, {:rir, 1, 24, 4})
+  {:ok, data} = Master.exec(pid, {:rir, 1, 24, 4})
+  [-5.0, +5.0] = Modbus.IEEE754.from_2n_regs(data)
   ```
 
 3. Use as TCP slave:

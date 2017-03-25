@@ -16,7 +16,7 @@ Based on:
 
   ```elixir
   def deps do
-    [{:modbus, "~> 0.3.4"}]
+    [{:modbus, "~> 0.3.5"}]
   end
   ```
 

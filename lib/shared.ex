@@ -1,4 +1,5 @@
 defmodule Modbus.Model.Shared do
+  @moduledoc false
   alias Modbus.Model
 
   def start_link(params, opts \\ []) do

@@ -99,6 +99,10 @@ Future
 
 - [ ] Improve documentation and samples
 
+Version 0.3.5
+
+- [x] Added float helper
+
 Version 0.3.4
 
 - [x] Fixed RTU CRC endianess

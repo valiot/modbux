@@ -39,11 +39,11 @@ defmodule Modbus.Tcp.Master do
   #write -5V (IEEE 754 float) to m3.p0
   #<<-5::float-32>> -> <<192, 160, 0, 0>>
   :ok = Master.exec(pid, {:phr, 1, 24, [0xc0a0, 0x0000]})
-  :ok = Master.exec(pid, {:phr, 1, 24, Modbus.IEEE754.to_2_regs(-5.0)})
+  :ok = Master.exec(pid, {:phr, 1, 24, Modbus.IEEE754.to_2_regs(-5.0, :be)})
   #write +5V (IEEE 754 float) to m3.p1
   #<<+5::float-32>> -> <<64, 160, 0, 0>>
   :ok = Master.exec(pid, {:phr, 1, 26, [0x40a0, 0x0000]})
-  :ok = Master.exec(pid, {:phr, 1, 26, Modbus.IEEE754.to_2_regs(+5.0)})
+  :ok = Master.exec(pid, {:phr, 1, 26, Modbus.IEEE754.to_2_regs(+5.0, :be)})
 
   :timer.sleep(20) #outputs settle delay
 
@@ -53,7 +53,7 @@ defmodule Modbus.Tcp.Master do
   #read previous analog channels as input registers
   {:ok, [0xc0a0, 0x0000, 0x40a0, 0x0000]} = Master.exec(pid, {:rir, 1, 24, 4})
   {:ok, data} = Master.exec(pid, {:rir, 1, 24, 4})
-  [-5.0, +5.0] = Modbus.IEEE754.from_2n_regs(data)
+  [-5.0, +5.0] = Modbus.IEEE754.from_2n_regs(data, :be)
   ```
   """
   alias Modbus.Tcp

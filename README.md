@@ -16,7 +16,7 @@ Based on:
 
   ```elixir
   def deps do
-    [{:modbus, "~> 0.3.5"}]
+    [{:modbus, "~> 0.3.6"}]
   end
   ```
 
@@ -57,11 +57,11 @@ Based on:
   #write -5V (IEEE 754 float) to m3.p0
   #<<-5::float-32>> -> <<192, 160, 0, 0>>
   :ok = Master.exec(pid, {:phr, 1, 24, [0xc0a0, 0x0000]})
-  :ok = Master.exec(pid, {:phr, 1, 24, Modbus.IEEE754.to_2_regs(-5.0)})
+  :ok = Master.exec(pid, {:phr, 1, 24, Modbus.IEEE754.to_2_regs(-5.0, :be)})
   #write +5V (IEEE 754 float) to m3.p1
   #<<+5::float-32>> -> <<64, 160, 0, 0>>
   :ok = Master.exec(pid, {:phr, 1, 26, [0x40a0, 0x0000]})
-  :ok = Master.exec(pid, {:phr, 1, 26, Modbus.IEEE754.to_2_regs(+5.0)})
+  :ok = Master.exec(pid, {:phr, 1, 26, Modbus.IEEE754.to_2_regs(+5.0, :be)})
 
   :timer.sleep(20) #outputs settle delay
 
@@ -71,7 +71,7 @@ Based on:
   #read previous analog channels as input registers
   {:ok, [0xc0a0, 0x0000, 0x40a0, 0x0000]} = Master.exec(pid, {:rir, 1, 24, 4})
   {:ok, data} = Master.exec(pid, {:rir, 1, 24, 4})
-  [-5.0, +5.0] = Modbus.IEEE754.from_2n_regs(data)
+  [-5.0, +5.0] = Modbus.IEEE754.from_2n_regs(data, :be)
   ```
 
 3. Use as TCP slave:
@@ -98,6 +98,10 @@ Based on:
 Future
 
 - [ ] Improve documentation and samples
+
+Version 0.3.6
+
+- [x] Added endianness flag to float helpers
 
 Version 0.3.5
 

@@ -3,7 +3,7 @@ defmodule Modbus.Mixfile do
 
   def project do
     [app: :modbus,
-     version: "0.3.5",
+     version: "0.3.6",
      elixir: "~> 1.3",
      compilers: [:elixir, :app],
      build_embedded: Mix.env == :prod,

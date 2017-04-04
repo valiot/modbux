@@ -11,11 +11,15 @@ defmodule Modbus.IEEE754 do
   ## Example
 
   ```elixir
-  +5.0 = IEEE754.from_2_regs(0x40a0, 0x0000)
+  +5.0 = IEEE754.from_2_regs(0x40a0, 0x0000, :be)
   ```
   """
-  def from_2_regs(w0, w1) do
+  def from_2_regs(w0, w1, :be) do
     <<value::float-32>> = <<w0::16, w1::16>>
+    value
+  end
+  def from_2_regs(w0, w1, :se) do
+    <<value::float-32>> = <<w1::16, w0::16>>
     value
   end
 
@@ -25,14 +29,18 @@ defmodule Modbus.IEEE754 do
   ## Example
 
   ```elixir
-  +5.0 = IEEE754.from_2_regs(0x40a0, 0x0000)
+  +5.0 = IEEE754.from_2_regs(0x40a0, 0x0000, :be)
   ```
   """
-  def from_2_regs([w0, w1]) do
+  def from_2_regs([w0, w1], :be) do
     <<f::float-32>> = <<w0::16, w1::16>>
     f
   end
 
+  def from_2_regs([w0, w1], :se) do
+    <<f::float-32>> = <<w1::16, w0::16>>
+    f
+  end
 
   @doc """
   Converts a list of 2n 16-bit registers to a IEEE754 floats list.
@@ -40,12 +48,12 @@ defmodule Modbus.IEEE754 do
   ## Example
 
   ```elixir
-  [-5.0, +5.0] = IEEE754.from_2n_regs([0xc0a0, 0x0000, 0x40a0, 0x0000])
+  [-5.0, +5.0] = IEEE754.from_2n_regs([0xc0a0, 0x0000, 0x40a0, 0x0000], :be)
   ```
   """
-  def from_2n_regs([]), do: []
-  def from_2n_regs([w0, w1 | tail]) do
-    [from_2_regs(w0, w1) | from_2n_regs(tail)]
+  def from_2n_regs([], _), do: []
+  def from_2n_regs([w0, w1 | tail], endianness) do
+    [from_2_regs(w0, w1, endianness) | from_2n_regs(tail, endianness)]
   end
 
   @doc """
@@ -57,9 +65,14 @@ defmodule Modbus.IEEE754 do
   [0xc0a0, 0x0000] = IEEE754.to_2_regs(-5.0)
   ```
   """
-  def to_2_regs(f) do
+  def to_2_regs(f, :be) do
     <<w0::16, w1::16>> = <<f::float-32>>
     [w0, w1]
+  end
+
+  def to_2_regs(f, :se) do
+    <<w0::16, w1::16>> = <<f::float-32>>
+    [w1, w0]
   end
 
   @doc """
@@ -71,10 +84,10 @@ defmodule Modbus.IEEE754 do
   [0xc0a0, 0x0000, 0x40a0, 0x0000] = IEEE754.to_2n_regs([-5.0, +5.0])
   ```
   """
-  def to_2n_regs([]), do: []
-  def to_2n_regs([f | tail]) do
-    [w0, w1] = to_2_regs(f)
-    [w0, w1 | to_2n_regs(tail)]
+  def to_2n_regs([], _), do: []
+  def to_2n_regs([f | tail], endianness) do
+    [w0, w1] = to_2_regs(f, endianness)
+    [w0, w1 | to_2n_regs(tail, endianness)]
   end
 
 end

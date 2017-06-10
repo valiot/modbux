@@ -16,7 +16,7 @@ Based on:
 
   ```elixir
   def deps do
-    [{:modbus, "~> 0.3.6"}]
+    [{:modbus, "~> 0.3.7"}]
   end
   ```
 
@@ -98,6 +98,10 @@ Based on:
 Future
 
 - [ ] Improve documentation and samples
+
+Version 0.3.7
+
+- [x] Changed little endian flag from :se to :le
 
 Version 0.3.6
 

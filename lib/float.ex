@@ -18,7 +18,7 @@ defmodule Modbus.IEEE754 do
     <<value::float-32>> = <<w0::16, w1::16>>
     value
   end
-  def from_2_regs(w0, w1, :se) do
+  def from_2_regs(w0, w1, :le) do
     <<value::float-32>> = <<w1::16, w0::16>>
     value
   end
@@ -37,7 +37,7 @@ defmodule Modbus.IEEE754 do
     f
   end
 
-  def from_2_regs([w0, w1], :se) do
+  def from_2_regs([w0, w1], :le) do
     <<f::float-32>> = <<w1::16, w0::16>>
     f
   end
@@ -70,7 +70,7 @@ defmodule Modbus.IEEE754 do
     [w0, w1]
   end
 
-  def to_2_regs(f, :se) do
+  def to_2_regs(f, :le) do
     <<w0::16, w1::16>> = <<f::float-32>>
     [w1, w0]
   end

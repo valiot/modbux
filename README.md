@@ -95,9 +95,10 @@ Based on:
 
 ## Endianess
 
-- [Default Erlang endianess is BIG](http://erlang.org/doc/programming_examples/bit_syntax.html)
-- [MODBUS endianess is BIG](https://en.wikipedia.org/wiki/Modbus)
-- [Opto22 FLOAT endianess is BIG](http://www.opto22.com/documents/1678_Modbus_TCP_Protocol_Guide.pdf)
+- [Erlang default endianess is BIG](http://erlang.org/doc/programming_examples/bit_syntax.html#Defaults)
+- [MODBUS default endianess is BIG (pag 34)](http://modbus.org/docs/PI_MBUS_300.pdf)
+- [MODBUS CRC endianess is LITTLE (pag 16)](http://modbus.org/docs/PI_MBUS_300.pdf)
+- [Opto22 FLOAT endianess is BIG (pag 27)](http://www.opto22.com/documents/1678_Modbus_TCP_Protocol_Guide.pdf)
 
 ## Roadmap
 

@@ -98,6 +98,7 @@ Based on:
 Future
 
 - [ ] Improve documentation and samples
+- [ ] Improve error handling
 
 Version 0.3.7
 

@@ -93,6 +93,12 @@ Based on:
   ...
   ```
 
+## Endianess
+
+- [Default Erlang endianess is BIG](http://erlang.org/doc/programming_examples/bit_syntax.html)
+- [MODBUS endianess is BIG](https://en.wikipedia.org/wiki/Modbus)
+- [Opto22 FLOAT endianess is BIG](http://www.opto22.com/documents/1678_Modbus_TCP_Protocol_Guide.pdf)
+
 ## Roadmap
 
 Future

@@ -14,7 +14,13 @@ defmodule Modbus.Tcp.Slave do
 
   #comply with formward id
   def id(pid) do
-    Agent.get(pid, fn %{ip: ip, port: port, name: name} -> {:ok, %{ip: ip, port: port, name: name}} end)
+    case state(pid) do
+      {:error, reason}->
+        {:error, reason}
+      _->
+        Agent.get(pid, fn %{ip: ip, port: port, name: name} -> {:ok, %{ip: ip, port: port, name: name}} end)
+    end
+
   end
 
   def state(pid) do
@@ -24,16 +30,18 @@ defmodule Modbus.Tcp.Slave do
   defp init(params) do
     model = Keyword.fetch!(params, :model)
     {:ok, shared} = Shared.start_link([model: model])
-    remote = Keyword.get(params, :remote, false)
-    ip = if remote, do: {0,0,0,0}, else: {127,0,0,1}
-    {:ok, listener} = :gen_tcp.listen(0, [:binary, ip: ip,
-      packet: :raw, active: false])
-    {:ok, {ip, port}} = :inet.sockname(listener)
-    name = Keyword.get(params, :name, name(ip, port))
-    spec = worker(__MODULE__, [], restart: :temporary, function: :start_child)
-    {:ok, sup} = Supervisor.start_link([spec], strategy: :simple_one_for_one)
-    accept = spawn_link(fn -> accept(listener, sup, shared) end)
-    %{ip: ip, port: port, name: name, shared: shared, sup: sup, accept: accept, listener: listener}
+    port = Keyword.get(params, :port, 0)
+    case :gen_tcp.listen(port, [:binary, packet: :raw, active: false]) do
+    {:ok, listener} ->
+      {:ok, {ip, port}} = :inet.sockname(listener)
+      name = Keyword.get(params, :name, name(ip, port))
+      spec = worker(__MODULE__, [], restart: :temporary, function: :start_child)
+      {:ok, sup} = Supervisor.start_link([spec], strategy: :simple_one_for_one)
+      accept = spawn_link(fn -> accept(listener, sup, shared) end)
+      %{ip: ip, port: port, name: name, shared: shared, sup: sup, accept: accept, listener: listener}
+    {:error, reason}->
+      {:error, reason}
+    end
   end
 
   defp name(ip, port) do

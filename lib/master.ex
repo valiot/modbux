@@ -84,11 +84,29 @@ defmodule Modbus.Tcp.Master do
     Agent.start_link(fn -> init(params) end, opts)
   end
 
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]},
+      type: :worker,
+      restart: :permanent,
+      shutdown: 500
+    }
+  end
+
+
   @doc """
   Stops the Server.
   """
   def stop(pid) do
     Agent.stop(pid)
+  end
+
+  @doc """
+  Gets the state of the Server.
+  """
+  def get(pid) do
+    Agent.get(pid, fn state -> state end)
   end
 
   @doc """
@@ -108,26 +126,36 @@ defmodule Modbus.Tcp.Master do
   Returns `:ok` | `{:ok, [values]}`.
   """
   def exec(pid, cmd, timeout \\ @to) do
-    Agent.get_and_update(pid, fn {socket, transid} ->
-      request = Tcp.pack_req(cmd, transid)
-      length = Tcp.res_len(cmd)
-      :ok = :gen_tcp.send(socket, request)
-      {:ok, response} = :gen_tcp.recv(socket, length, timeout)
-      values = Tcp.parse_res(cmd, response, transid)
-      case values do
-        nil -> {:ok, {socket, transid + 1}}
-        _ -> {{:ok, values}, {socket, transid + 1}}
-      end
-    end)
+    case get(pid) do
+      {:error, reason} ->
+        {:error, reason}
+      _->
+        Agent.get_and_update(pid, fn {socket, transid} ->
+          request = Tcp.pack_req(cmd, transid)
+          length = Tcp.res_len(cmd)
+          :ok = :gen_tcp.send(socket, request)
+          case :gen_tcp.recv(socket, length, timeout) do
+            {:ok, response} ->
+              values = Tcp.parse_res(cmd, response, transid)
+              case values do
+                nil -> {:ok, {socket, transid + 1}}
+                _ -> {{:ok, values}, {socket, transid + 1}}
+              end
+            {:error, reason} ->
+              {:error, reason}
+          end
+        end)
+    end
   end
 
   defp init(params) do
     ip = Keyword.fetch!(params, :ip)
     port = Keyword.fetch!(params, :port)
     timeout = Keyword.get(params, :timeout, @to)
-    {:ok, socket} = :gen_tcp.connect(ip, port,
-      [:binary, packet: :raw, active: :false], timeout)
-    {socket, 0}
+    case :gen_tcp.connect(ip, port, [:binary, packet: :raw, active: :false], timeout) do
+      {:ok, socket} -> {socket, 0}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
 end

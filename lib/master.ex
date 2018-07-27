@@ -57,7 +57,7 @@ defmodule Modbus.Tcp.Master do
   ```
   """
   alias Modbus.Tcp
-
+  require Logger
   @to 2000
 
   ##########################################
@@ -137,6 +137,7 @@ defmodule Modbus.Tcp.Master do
           case :gen_tcp.recv(socket, length, timeout) do
             {:ok, response} ->
               values = Tcp.parse_res(cmd, response, transid)
+              Logger.info(inspect(values))
               case values do
                 nil -> {:ok, {socket, transid + 1}}
                 _ -> {{:ok, values}, {socket, transid + 1}}

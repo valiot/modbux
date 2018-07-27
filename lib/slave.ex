@@ -3,6 +3,7 @@ defmodule Modbus.Tcp.Slave do
   import Supervisor.Spec
   alias Modbus.Model.Shared
   alias Modbus.Tcp
+  require Logger
 
   def start_link(params, opts \\ []) do
     Agent.start_link(fn -> init(params) end, opts)
@@ -70,19 +71,19 @@ defmodule Modbus.Tcp.Slave do
     case :gen_tcp.recv(socket, 0) do
       {:ok, data} ->
         {cmd, transid} = Tcp.parse_req(data)
-        IO.inspect({cmd, transid})
+        Logger.info(inspect({cmd, transid}))
         case Shared.apply(shared, cmd) do
           {:ok, values} ->
-            IO.puts("mande algo")
+            Logger.info("mande algo")
             resp = Tcp.pack_res(cmd, values, transid)
             :ok = :gen_tcp.send(socket, resp)
           :error ->
-            IO.puts("an error has occur")
+            Logger.info("an error has occur")
         end
         loop(socket, shared)
       {:error, reason} ->
         #agregar shared
-        IO.puts("Error: #{reason}")
+        Logger.info("Error: #{reason}")
         model = Shared.state(shared)
         port = state(self())[:port]
         start_link([model: model, port: port])

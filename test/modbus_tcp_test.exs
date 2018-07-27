@@ -1,6 +1,6 @@
 defmodule ModbusTcpTest do
   use ExUnit.Case
-  test "Slave and Master" do
+  test "test Slave and Master desconexión" do
     #run with: mix slave
     alias Modbus.Tcp.Slave
     alias Modbus.Tcp.Master
@@ -15,4 +15,11 @@ defmodule ModbusTcpTest do
     {:ok, mpid} = Master.start_link([ip: {127,0,0,1}, port: port])
     assert {:ok, [0]} == Master.exec(mpid, {:rc, 0x50, 0x5152, 1})
   end
+
+  #  test "test Master for independent Slave" do
+  #    alias Modbus.Tcp.Master
+  #    RingLogger.attach
+  #    {:ok, mpid} = Master.start_link([ip: {127,0,0,1}, port: port])
+  #    {:ok, [0]} = Master.exec(mpid, {:rc, 0x50, 0x5153, 1})
+  #  end
 end

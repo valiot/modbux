@@ -105,7 +105,7 @@ defmodule Modbus.Tcp.Master do
   @doc """
   Gets the state of the Server.
   """
-  def get(pid) do
+  def state(pid) do
     Agent.get(pid, fn state -> state end)
   end
 
@@ -126,36 +126,38 @@ defmodule Modbus.Tcp.Master do
   Returns `:ok` | `{:ok, [values]}`.
   """
   def exec(pid, cmd, timeout \\ @to) do
-    case get(pid) do
+    Logger.info(inspect(state(pid)))
+    case state(pid) do
       {:error, reason} ->
         {:error, reason}
       _->
         Agent.get_and_update(pid, fn {socket, transid} ->
-          request = Tcp.pack_req(cmd, transid)
-          length = Tcp.res_len(cmd)
-          :ok = :gen_tcp.send(socket, request)
-          case :gen_tcp.recv(socket, length, timeout) do
-            {:ok, response} ->
-              values = Tcp.parse_res(cmd, response, transid)
-              Logger.info(inspect(values))
-              case values do
-                nil -> {:ok, {socket, transid + 1}}
-                _ -> {{:ok, values}, {socket, transid + 1}}
-              end
-            {:error, reason} ->
-              {:error, reason}
-          end
+        request = Tcp.pack_req(cmd, transid)
+        length = Tcp.res_len(cmd)
+        :gen_tcp.send(socket, request)
+        case :gen_tcp.recv(socket, length, timeout) do
+          {:ok, response} ->
+            values = Tcp.parse_res(cmd, response, transid)
+            Logger.info(inspect(values))
+            case values do
+              nil -> {:ok, {socket, transid + 1}}
+              _ -> {{:ok, values}, {socket, transid + 1}}
+            end
+          {:error, reason} ->
+            Logger.debug("Error: #{reason}")
+            {{:error, reason}, {socket, transid}}
+        end
         end)
     end
   end
-
+  #returns the state ()
   defp init(params) do
     ip = Keyword.fetch!(params, :ip)
     port = Keyword.fetch!(params, :port)
     timeout = Keyword.get(params, :timeout, @to)
     case :gen_tcp.connect(ip, port, [:binary, packet: :raw, active: :false], timeout) do
-      {:ok, socket} -> {socket, 0}
-      {:error, reason} -> {:error, reason}
+      {:ok, socket} -> {socket, 0} #state
+      {:error, reason} -> {:error, reason} #state
     end
   end
 

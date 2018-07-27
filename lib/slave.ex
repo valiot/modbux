@@ -51,11 +51,16 @@ defmodule Modbus.Tcp.Slave do
   end
 
   defp accept(listener, sup, model) do
-    {:ok, socket} = :gen_tcp.accept(listener)
-    {:ok, pid} = Supervisor.start_child(sup, [socket, model])
-    :ok = :gen_tcp.controlling_process(socket, pid)
-    send pid, :go
-    accept(listener, sup, model)
+    case :gen_tcp.accept(listener) do
+      {:ok, socket} ->
+        Logger.debug("New Client")
+        {:ok, pid} = Supervisor.start_child(sup, [socket, model])
+        :ok = :gen_tcp.controlling_process(socket, pid)
+        send pid, :go
+        accept(listener, sup, model)
+      {:error, reason} ->
+        Logger.debug("Error A: #{reason}")
+    end
   end
 
   def start_child(socket, shared) do
@@ -74,7 +79,7 @@ defmodule Modbus.Tcp.Slave do
         Logger.info(inspect({cmd, transid}))
         case Shared.apply(shared, cmd) do
           {:ok, values} ->
-            Logger.info("mande algo")
+            Logger.info("msg send")
             resp = Tcp.pack_res(cmd, values, transid)
             :ok = :gen_tcp.send(socket, resp)
           :error ->
@@ -83,10 +88,11 @@ defmodule Modbus.Tcp.Slave do
         loop(socket, shared)
       {:error, reason} ->
         #agregar shared
-        Logger.info("Error: #{reason}")
-        model = Shared.state(shared)
-        port = state(self())[:port]
-        start_link([model: model, port: port])
+        Logger.info("Error R: #{reason}")
+        #model = Shared.state(shared)
+        #port = state(self())[:port]
+        #Logger.info("Me reconectare")
+        #start_link([model: model, port: port])
         #loop(socket, shared)
       end
   end

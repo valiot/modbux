@@ -20,7 +20,6 @@ defmodule Modbus.Tcp.Slave do
       _->
         Agent.get(pid, fn %{ip: ip, port: port, name: name} -> {:ok, %{ip: ip, port: port, name: name}} end)
     end
-
   end
 
   def state(pid) do
@@ -68,11 +67,26 @@ defmodule Modbus.Tcp.Slave do
   end
 
   defp loop(socket, shared) do
-    {:ok, data} = :gen_tcp.recv(socket, 0)
-    {cmd, transid} = Tcp.parse_req(data)
-    {:ok, values} = Shared.apply(shared, cmd)
-    resp = Tcp.pack_res(cmd, values, transid)
-    :ok = :gen_tcp.send(socket, resp)
-    loop(socket, shared)
+    case :gen_tcp.recv(socket, 0) do
+      {:ok, data} ->
+        {cmd, transid} = Tcp.parse_req(data)
+        IO.inspect({cmd, transid})
+        case Shared.apply(shared, cmd) do
+          {:ok, values} ->
+            IO.puts("mande algo")
+            resp = Tcp.pack_res(cmd, values, transid)
+            :ok = :gen_tcp.send(socket, resp)
+          :error ->
+            IO.puts("an error has occur")
+        end
+        loop(socket, shared)
+      {:error, reason} ->
+        #agregar shared
+        IO.puts("Error: #{reason}")
+        model = Shared.state(shared)
+        port = state(self())[:port]
+        start_link([model: model, port: port])
+        #loop(socket, shared)
+      end
   end
 end

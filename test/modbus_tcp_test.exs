@@ -15,5 +15,4 @@ defmodule ModbusTcpTest do
     {:ok, mpid} = Master.start_link([ip: {127,0,0,1}, port: port])
     assert {:ok, [0]} == Master.exec(mpid, {:rc, 0x50, 0x5152, 1})
   end
-
 end

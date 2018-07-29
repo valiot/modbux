@@ -152,8 +152,21 @@ defmodule Modbus.Tcp.Client do
     Agent.get_and_update(pid,fn state -> update_state(state, params) end) #{respuesta(cmd), estado}
   end
 
-  @doc """
-  Send a request to a connected Modbus server.
+   @doc """
+  send a request to Modbus TCP Server.
+
+  `cmd` is one of:
+
+  - `{:rc, slave, address, count}` read `count` coils.
+  - `{:ri, slave, address, count}` read `count` inputs.
+  - `{:rhr, slave, address, count}` read `count` holding registers.
+  - `{:rir, slave, address, count}` read `count` input registers.
+  - `{:fc, slave, address, value}` force single coil.
+  - `{:phr, slave, address, value}` preset single holding register.
+  - `{:fc, slave, address, values}` force multiple coils.
+  - `{:phr, slave, address, values}` preset multiple holding registers.
+
+  Returns `:ok`.
   """
   def request(pid, cmd) do
     Agent.get_and_update(pid,fn state -> send_request(state, cmd) end)
@@ -209,50 +222,7 @@ defmodule Modbus.Tcp.Client do
     end
   end
 
-  @doc """
-  Executes a Modbus TCP command.
 
-  `cmd` is one of:
-
-  - `{:rc, slave, address, count}` read `count` coils.
-  - `{:ri, slave, address, count}` read `count` inputs.
-  - `{:rhr, slave, address, count}` read `count` holding registers.
-  - `{:rir, slave, address, count}` read `count` input registers.
-  - `{:fc, slave, address, value}` force single coil.
-  - `{:phr, slave, address, value}` preset single holding register.
-  - `{:fc, slave, address, values}` force multiple coils.
-  - `{:phr, slave, address, values}` preset multiple holding registers.
-
-  Returns `:ok` | `{:ok, [values]}`.
-  """
-  def exec(pid, cmd, timeout \\ @to) do
-    Logger.info(inspect(state(pid)))
-    case state(pid) do
-      {:error, reason} ->
-        {:error, reason}
-      _->
-        Agent.get_and_update(pid, fn {socket, transid} ->
-        request = Tcp.pack_req(cmd, transid)
-        length = Tcp.res_len(cmd)
-        :gen_tcp.send(socket, request)
-        case :gen_tcp.recv(socket, length, timeout) do
-          {:ok, response} ->
-            values = Tcp.parse_res(cmd, response, transid)
-            Logger.info(inspect(values))
-            case values do
-              nil -> {:ok, {socket, transid + 1}}
-              _ -> {{:ok, values}, {socket, transid + 1}}
-            end
-          {:error, reason} ->
-            Logger.debug("Error: #{reason}")
-            {{:error, reason}, {socket, transid}}
-        end
-        end)
-    end
-  end
-
-
-# agregar lo de active
   defp send_request(state, cmd) do
     Logger.debug(inspect(state))
     case state.status do
@@ -264,7 +234,6 @@ defmodule Modbus.Tcp.Client do
             new_state = %Client{state | msg_len: length, cmd: cmd}
             {:ok, new_state}
           {:error, reason} ->
-            #cerrar?
             {{:error, reason}, state}
         end
 
@@ -272,6 +241,7 @@ defmodule Modbus.Tcp.Client do
         {{:error, :closed}, state}
     end
   end
+
 #agregar active
   defp read_confirmation(%Client{socket: s, msg_len: l, timeout: t, transid: tid, cmd: cmd, status: st} = state) do
     Logger.debug(inspect(state))
@@ -292,7 +262,7 @@ defmodule Modbus.Tcp.Client do
             Logger.debug("Error: #{reason}")
             #cerrar?
             new_state = %Client{state | cmd: nil, msg_len: 0}
-            {{:error, reason}, {new_state}}
+            {{:error, reason}, new_state}
         end
       :closed ->
         {{:error, :closed}, state}

@@ -6,7 +6,7 @@ defmodule Modbus.Tcp.Client do
   @active false
 
   @moduledoc """
-  TCP Master server.
+  TCP Master Client.
 
   ## Example
 
@@ -70,13 +70,13 @@ defmodule Modbus.Tcp.Client do
             tcp_port: nil,
             socket: nil,
             timeout: @to,
-            active: nil,
+            active: false,
             transid: 0,
             status: nil
 
 
   @type client_option ::
-        {:ip, non_neg_integer}
+        {:ip, {byte(),byte(),byte(),byte()}}
       | {:active, boolean}
       | {:tcp_port, non_neg_integer}
       | {:timeout, non_neg_integer}
@@ -105,6 +105,7 @@ defmodule Modbus.Tcp.Client do
   Modbus.Tcp.Master.start_link([ip: {10,77,0,2}, port: 502, timeout: 2000])
   ```
   """
+  @spec start_link([client_option], [term]) :: {:ok, pid} | {:error, term}
   def start_link(params, opts \\ []) do
     Agent.start_link(fn -> init(params) end, opts)
   end
@@ -123,15 +124,29 @@ defmodule Modbus.Tcp.Client do
   @doc """
   Stops the Client.
   """
+  @spec stop(GenServer.server()) :: :ok | :error
   def stop(pid) do
-    Agent.stop(pid)
+    if Process.info(pid) do
+      Agent.stop(pid)
+    else
+      :error
+    end
   end
 
   @doc """
   Gets the state of the Client.
   """
+  #@spec state(GenServer.server()) :: {term() | :closed, [uart_option]}
   def state(pid) do
     Agent.get(pid, fn state -> state end)
+  end
+
+   @doc """
+  Configure the Modbus client (`status` mmust be `:closed`).
+  """
+  @spec configure(GenServer.server(), [client_option]) :: :ok | {:error, term}
+  def configure(pid, params) do
+    Agent.get_and_update(pid,fn state -> update_state(state, params) end) #{respuesta(cmd), estado}
   end
 
   @doc """
@@ -178,10 +193,17 @@ defmodule Modbus.Tcp.Client do
 
 
   @doc """
-  send a request to a connected Modbus server.
+  Send a request to a connected Modbus server.
   """
   def request(pid, cmd) do
     Agent.get_and_update(pid,fn state -> send_request(state, cmd) end)
+  end
+
+   @doc """
+  read the confirmation of the connected Modbus server.
+  """
+  def confirmation(pid, cmd) do
+    Agent.get_and_update(pid,fn state -> read_confirmation(state, cmd) end)
   end
 
   @doc """
@@ -198,13 +220,6 @@ defmodule Modbus.Tcp.Client do
     Agent.get_and_update(pid,fn state -> close_tcp_port(state) end) #{respuesta(cmd), estado}
   end
 
-  @doc """
-  Configure the Modbus client (`status` mmust be `:closed`).
-  """
-  @spec configure(GenServer.server(), [client_option]) :: :ok | {:error, term}
-  def configure(pid, params) do
-    Agent.get_and_update(pid,fn state -> update_state(state, params) end) #{respuesta(cmd), estado}
-  end
 
   #returns the state ()
   defp init(args) do
@@ -212,26 +227,33 @@ defmodule Modbus.Tcp.Client do
     ip = args[:ip] || @ip
     timeout = args[:timeout] || @timeout
     status = :closed
-    active = args[:active] || @active
-
+    active =
+      if args[:active] == nil do
+        @active
+      else
+        args[:active]
+      end
     state = %Client{ip: ip, tcp_port: port, timeout: timeout, status: status, active: active}
     state
   end
 
   defp connect_socket(state) do
     Logger.debug(inspect(state))
-
     case :gen_tcp.connect(state.ip, state.tcp_port, [:binary, packet: :raw, active: state.active], state.timeout) do
-          {:ok, socket} ->
-           new_state = %Client{state | socket: socket, status: :connected} #state
-           {:ok, new_state}
-          {:error, reason} ->
-           Logger.debug(reason)
-           {:error, state} #state
+      {:ok, socket} ->
+        new_state = %Client{state | socket: socket, status: :connected} #state
+        {:ok, new_state}
+      {:error, reason} ->
+        Logger.debug(reason)
+        {{:error,reason}, state} #state
     end
   end
 
   defp send_request(state, cmd) do
+
+  end
+
+  defp read_confirmation(state, cmd) do
 
   end
 
@@ -244,15 +266,32 @@ defmodule Modbus.Tcp.Client do
               {:ok, new_state}
             {:error, reason} ->
               Logger.debug(reason)
-              {:error, state} #state
+              {{:error,reason}, state} #state
       end
     else
       Logger.info("No port to close")
-      {:error, state} #state
+      {{:error, :closed}, state} #state
     end
   end
 
-  defp update_state(sate, params) do
+  defp update_state(state, args) do
+    case state.status do
+      :closed ->
+        port = args[:port] || state.tcp_port
+        ip = args[:ip] || state.ip
+        timeout = args[:timeout] || state.timeout
+        active =
+          if args[:active] == nil do
+            state.active
+          else
+            args[:active]
+          end
+
+        new_state = %Client{state | ip: ip, tcp_port: port, timeout: timeout, active: active}
+        {:ok, new_state}
+      _ ->
+        {:error, state}
+    end
 
   end
 end

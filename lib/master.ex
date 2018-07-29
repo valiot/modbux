@@ -80,6 +80,7 @@ defmodule Modbus.Tcp.Master do
   Modbus.Tcp.Master.start_link([ip: {10,77,0,2}, port: 502, timeout: 2000])
   ```
   """
+
   def start_link(params, opts \\ []) do
     Agent.start_link(fn -> init(params) end, opts)
   end

@@ -1,9 +1,13 @@
 defmodule Modbus.Tcp.Client do
   alias Modbus.Tcp.Client
+  alias Modbus.Tcp
+  use GenServer
   @timeout 2000
   @port 502
   @ip {0,0,0,0}
   @active false
+  require Logger
+  @to 2000
 
   @moduledoc """
   TCP Master Client.
@@ -62,9 +66,6 @@ defmodule Modbus.Tcp.Client do
   [-5.0, +5.0] = Modbus.IEEE754.from_2n_regs(data, :be)
   ```
   """
-  alias Modbus.Tcp
-  require Logger
-  @to 2000
 
   defstruct ip: nil,
             tcp_port: nil,
@@ -110,7 +111,7 @@ defmodule Modbus.Tcp.Client do
   """
   @spec start_link([client_option], [term]) :: {:ok, pid} | {:error, term}
   def start_link(params, opts \\ []) do
-    Agent.start_link(fn -> init(params) end, opts)
+    GenServer.start_link(__MODULE__, params, opts)
   end
 
   def child_spec(opts) do
@@ -129,11 +130,7 @@ defmodule Modbus.Tcp.Client do
   """
   @spec stop(GenServer.server()) :: :ok | :error
   def stop(pid) do
-    if Process.info(pid) do
-      Agent.stop(pid)
-    else
-      :error
-    end
+    GenServer.stop(pid)
   end
 
   @doc """
@@ -141,7 +138,7 @@ defmodule Modbus.Tcp.Client do
   """
   #@spec state(GenServer.server()) :: {term() | :closed, [uart_option]}
   def state(pid) do
-    Agent.get(pid, fn state -> state end)
+    GenServer.call(pid, :state)
   end
 
    @doc """
@@ -149,7 +146,21 @@ defmodule Modbus.Tcp.Client do
   """
   @spec configure(GenServer.server(), [client_option]) :: :ok | {:error, term}
   def configure(pid, params) do
-    Agent.get_and_update(pid,fn state -> update_state(state, params) end) #{respuesta(cmd), estado}
+    GenServer.call(pid, {:configure, params})
+  end
+
+   @doc """
+  Connect the Modbus client to a server.
+  """
+  def connect(pid) do
+    GenServer.call(pid, :connect)
+  end
+
+  @doc """
+  Close the tcp port of the Modbus client.
+  """
+  def close(pid) do
+    GenServer.call(pid, :close)
   end
 
    @doc """
@@ -169,33 +180,18 @@ defmodule Modbus.Tcp.Client do
   Returns `:ok`.
   """
   def request(pid, cmd) do
-    Agent.get_and_update(pid,fn state -> send_request(state, cmd) end)
+    GenServer.call(pid, {:request, cmd})
   end
 
    @doc """
   read the confirmation of the connected Modbus server.
   """
   def confirmation(pid) do
-    Agent.get_and_update(pid,fn state -> read_confirmation(state) end)
-  end
-
-  @doc """
-  Connect the Modbus client to a server.
-  """
-  def connect(pid) do
-    Agent.get_and_update(pid,fn state -> connect_socket(state) end) #{respuesta(cmd), estado}
-  end
-
-  @doc """
-  Close the tcp port of the Modbus client.
-  """
-  def close(pid) do
-    Agent.get_and_update(pid,fn state -> close_tcp_port(state) end) #{respuesta(cmd), estado}
+    GenServer.call(pid, :confirmation)
   end
 
   #callbacks
-  #returns the state ()
-  defp init(args) do
+  def init(args) do
     port = args[:port] || @port
     ip = args[:ip] || @ip
     timeout = args[:timeout] || @timeout
@@ -207,86 +203,15 @@ defmodule Modbus.Tcp.Client do
         args[:active]
       end
     state = %Client{ip: ip, tcp_port: port, timeout: timeout, status: status, active: active}
-    state
+    {:ok, state}
   end
 
-  defp connect_socket(state) do
-    Logger.debug(inspect(state))
-    case :gen_tcp.connect(state.ip, state.tcp_port, [:binary, packet: :raw, active: state.active], state.timeout) do
-      {:ok, socket} ->
-        new_state = %Client{state | socket: socket, status: :connected} #state
-        {:ok, new_state}
-      {:error, reason} ->
-        Logger.debug(reason)
-        {{:error,reason}, state} #state
-    end
+  def handle_call(:state, from, state) do
+    Logger.debug(inspect(from))
+    {:reply, state, state}
   end
 
-
-  defp send_request(state, cmd) do
-    Logger.debug(inspect(state))
-    case state.status do
-      :connected ->
-        request = Tcp.pack_req(cmd, state.transid)
-        length = Tcp.res_len(cmd)
-        case :gen_tcp.send(state.socket, request) do
-          :ok ->
-            new_state = %Client{state | msg_len: length, cmd: cmd}
-            {:ok, new_state}
-          {:error, reason} ->
-            {{:error, reason}, state}
-        end
-
-      :closed ->
-        {{:error, :closed}, state}
-    end
-  end
-
-#agregar active
-  defp read_confirmation(%Client{socket: s, msg_len: l, timeout: t, transid: tid, cmd: cmd, status: st} = state) do
-    Logger.debug(inspect(state))
-    case st do
-      :connected ->
-        case :gen_tcp.recv(s, l, t) do
-          {:ok, response} ->
-            values = Tcp.parse_res(cmd, response, tid)
-            Logger.info(inspect(values))
-            new_state = %Client{state | transid: tid+1, cmd: nil, msg_len: 0}
-            case values do
-              nil -> # escribió algo
-                {:ok, new_state}
-              _ -> # leemos algo
-                {{:ok, values}, new_state}
-            end
-          {:error, reason} ->
-            Logger.debug("Error: #{reason}")
-            #cerrar?
-            new_state = %Client{state | cmd: nil, msg_len: 0}
-            {{:error, reason}, new_state}
-        end
-      :closed ->
-        {{:error, :closed}, state}
-    end
-  end
-
-  defp close_tcp_port(state) do
-    Logger.debug(inspect(state))
-    if state.socket != nil do
-      case :gen_tcp.close(state.socket) do
-            :ok ->
-              new_state = %Client{state | socket: nil, status: :closed} #state
-              {:ok, new_state}
-            {:error, reason} ->
-              Logger.debug(reason)
-              {{:error,reason}, state} #state
-      end
-    else
-      Logger.info("No port to close")
-      {{:error, :closed}, state} #state
-    end
-  end
-
-  defp update_state(state, args) do
+  def handle_call({:configure, args}, _from, state) do
     case state.status do
       :closed ->
         port = args[:port] || state.tcp_port
@@ -298,12 +223,108 @@ defmodule Modbus.Tcp.Client do
           else
             args[:active]
           end
-
         new_state = %Client{state | ip: ip, tcp_port: port, timeout: timeout, active: active}
-        {:ok, new_state}
+        {:reply, :ok, new_state}
       _ ->
-        {:error, state}
+        {:reply, :error, state}
     end
+  end
 
+  def handle_call(:connect, {from,_ref}, state) do
+    Logger.debug(inspect(state))
+    Logger.debug(inspect(from))
+    case :gen_tcp.connect(state.ip, state.tcp_port, [:binary, packet: :raw, active: state.active], state.timeout) do
+      {:ok, socket} ->
+        ctrl_pid =
+          if state.pid == nil do
+            from
+          else
+            state.pid
+          end
+        new_state = %Client{state | socket: socket, status: :connected, pid: ctrl_pid} #state
+        {:reply, :ok, new_state}
+      {:error, reason} ->
+        Logger.debug(reason)
+        {:reply, {:error,reason}, state} #state
+    end
+  end
+
+  def handle_call(:close, _from, state) do
+    Logger.debug(inspect(state))
+    if state.socket != nil do
+      case :gen_tcp.close(state.socket) do
+            :ok ->
+              new_state = %Client{state | socket: nil, status: :closed} #state
+              {:reply, :ok, new_state}
+            {:error, reason} ->
+              Logger.debug(reason)
+              {:reply, {:error,reason}, state} #state
+      end
+    else
+      Logger.info("No port to close")
+      {:reply, {:error, :closed}, state} #state
+    end
+  end
+
+  def handle_call({:request, cmd}, _from, state) do
+    Logger.debug(inspect(state))
+    case state.status do
+      :connected ->
+        request = Tcp.pack_req(cmd, state.transid)
+        length = Tcp.res_len(cmd)
+        case :gen_tcp.send(state.socket, request) do
+          :ok ->
+            new_state = %Client{state | msg_len: length, cmd: cmd}
+            {:reply, :ok, new_state}
+          {:error, reason} ->
+            {:reply, {:error, reason}, state}
+        end
+
+      :closed ->
+        {:reply, {:error, :closed}, state}
+    end
+  end
+
+  def handle_call(:confirmation, _from, state) do
+    Logger.debug(inspect(state))
+    if state.active do
+      {:reply, :error, state}
+    else
+      case state.status do
+        :connected ->
+          case :gen_tcp.recv(state.socket, state.msg_len, state.timeout) do
+            {:ok, response} ->
+              values = Tcp.parse_res(state.cmd, response, state.transid)
+              Logger.info(inspect(values))
+              new_state = %Client{state | transid: state.transid+1, cmd: nil, msg_len: 0}
+              case values do
+                nil -> # escribió algo
+                  {:reply, :ok, new_state}
+                _ -> # leemos algo
+                  {:reply, {:ok, values}, new_state}
+              end
+            {:error, reason} ->
+              Logger.debug("Error: #{reason}")
+              #cerrar?
+              new_state = %Client{state | cmd: nil, msg_len: 0}
+              {:reply, {:error, reason}, new_state}
+          end
+        :closed ->
+          {:reply, {:error, :closed}, state}
+      end
+    end
+  end
+
+  def handle_info({:tcp,_port, response}, state) do
+    Logger.debug(inspect(response))
+    values = Tcp.parse_res(state.cmd, response, state.transid)
+    send(state.pid, values)
+    new_state = %Client{state | transid: state.transid+1, cmd: nil, msg_len: 0}
+    {:noreply, new_state}
+  end
+
+  def handle_info(msg, state) do
+    Logger.debug(inspect(msg))
+    {:error,state}
   end
 end

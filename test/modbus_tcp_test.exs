@@ -35,7 +35,7 @@ defmodule ModbusTcpTest do
     alias Modbus.Tcp.Slave
     alias Modbus.Tcp.Client
     RingLogger.attach
-    {:ok, cpid} = Client.start_link([ip: {127,0,0,1}, port: 2000])
+    {:ok, cpid} = Client.start_link([ip: {127,0,0,1}, port: 5000])
     assert {:error, :econnrefused} == Client.connect(cpid)
     assert {:error, :closed} == Client.close(cpid)
   end

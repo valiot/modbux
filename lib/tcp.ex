@@ -39,7 +39,7 @@ defmodule Modbus.Tcp do
       if size == r_size do
           payload
       else
-          Logger.error("#{__MODULE__} size = #{size}, payload_size = #{r_size}, msg = #{msg}")
+          Logger.error("#{__MODULE__} size = #{size}, payload_size = #{r_size}, msg = #{inspect(msg)}")
           nil
       end
     data

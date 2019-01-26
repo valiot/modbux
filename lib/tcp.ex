@@ -51,4 +51,9 @@ defmodule Modbus.Tcp do
     {payload, transid}
   end
 
+  def unwrap(inv_data) do
+    Logger.error("#{__MODULE__} invalid data: #{inspect inv_data}")
+    raise("#{__MODULE__} invalid data: #{inspect inv_data}")
+  end
+
 end

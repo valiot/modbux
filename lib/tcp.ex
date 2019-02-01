@@ -2,7 +2,7 @@ defmodule Modbus.Tcp do
   @moduledoc false
   alias Modbus.Request
   alias Modbus.Response
-
+  require Logger
   def pack_req(cmd, transid) do
     cmd |> Request.pack |> wrap(transid)
   end
@@ -33,14 +33,27 @@ defmodule Modbus.Tcp do
     <<transid::16, 0, 0, size::16, payload::binary>>
   end
 
-  def unwrap(<<transid::16, 0, 0, size::16, payload::binary>>, transid) do
-    ^size = :erlang.byte_size(payload)
-    payload
+  def unwrap(<<transid::16, 0, 0, size::16, payload::binary>> = msg, transid) do
+    r_size = :erlang.byte_size(payload)
+    data =
+      if size == r_size do
+          payload
+      else
+          Logger.error("#{__MODULE__} size = #{size}, payload_size = #{r_size}, msg = #{inspect(msg)}")
+          nil
+      end
+    data
   end
 
+  @spec unwrap(<<_::48, _::_*8>>) :: {binary(), char()}
   def unwrap(<<transid::16, 0, 0, size::16, payload::binary>>) do
     ^size = :erlang.byte_size(payload)
     {payload, transid}
+  end
+
+  def unwrap(inv_data) do
+    Logger.error("#{__MODULE__} invalid data: #{inspect inv_data}")
+    raise("#{__MODULE__} invalid data: #{inspect inv_data}")
   end
 
 end

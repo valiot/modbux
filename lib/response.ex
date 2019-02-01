@@ -84,6 +84,11 @@ defmodule Modbus.Response do
     nil
   end
 
+  #error
+  def parse(_cmd, nil) do
+    nil
+  end
+
   def length({:rc, _slave, _address, count}) do
     3 + Helper.byte_count(count)
   end

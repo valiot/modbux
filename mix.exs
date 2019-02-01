@@ -8,7 +8,6 @@ defmodule Modbus.Mixfile do
      compilers: [:elixir, :app],
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     aliases: aliases(),
      description: description(),
      package: package(),
      deps: deps()]
@@ -36,12 +35,5 @@ defmodule Modbus.Mixfile do
      maintainers: ["Samuel Ventura"],
      licenses: ["Apache 2.0"],
      links: %{"GitHub" => "https://github.com/samuelventura/modbus/"}]
-  end
-
-  defp aliases do
-    [
-      "opto22": ["run script/opto22.exs"],
-      "slave": ["run script/slave.exs"],
-    ]
   end
 end

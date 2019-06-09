@@ -103,7 +103,7 @@ defmodule Modbus.Request do
   end
 
   def length({:phr, _slave, _address, values}) when is_list(values) do
-    7 + 2 * Enum.count(values);
+    7 + 2 * Enum.count(values)
   end
 
   defp reads(_type, slave, function, address, count) do
@@ -119,17 +119,16 @@ defmodule Modbus.Request do
   end
 
   defp writes(:d, slave, function, address, values) do
-    count =  Enum.count(values)
+    count = Enum.count(values)
     bytes = Helper.byte_count(count)
     data = Helper.bitlist_to_bin(values)
     <<slave, function, address::16, count::16, bytes, data::binary>>
   end
 
   defp writes(:a, slave, function, address, values) do
-    count =  Enum.count(values)
+    count = Enum.count(values)
     bytes = 2 * count
     data = Helper.reglist_to_bin(values)
     <<slave, function, address::16, count::16, bytes, data::binary>>
   end
-
 end

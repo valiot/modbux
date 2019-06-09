@@ -20,16 +20,19 @@ defmodule Modbus.Tcp.Server.Handler do
   def handle_info({:tcp, socket, data}, state) do
     Logger.debug("(#{__MODULE__}) Received: #{data} ")
     {cmd, transid} = Tcp.parse_req(data)
-    Logger.debug("(#{__MODULE__}) Received Modbus request: #{inspect {cmd, transid}}")
+    Logger.debug("(#{__MODULE__}) Received Modbus request: #{inspect({cmd, transid})}")
+
     case Shared.apply(state.model_pid, cmd) do
       {:ok, values} ->
         Logger.info("(#{__MODULE__}) msg send")
         resp = Tcp.pack_res(cmd, values, transid)
         if !is_nil(state.parent_pid), do: notify(state.parent_pid, cmd)
         :ok = :gen_tcp.send(socket, resp)
+
       :error ->
         Logger.info("(#{__MODULE__}) an error has occur")
     end
+
     {:noreply, state}
   end
 

@@ -21,7 +21,7 @@ defmodule Modbus.Model do
     write(state, {slave, :c, address, value})
   end
 
-  #cambiar funcion ya que la lista puede contener valores no enteros
+  # cambiar funcion ya que la lista puede contener valores no enteros
   def apply(state, {:fc, slave, address, values}) when is_list(values) do
     writes(state, {slave, :c, address, values})
   end
@@ -29,19 +29,23 @@ defmodule Modbus.Model do
   def apply(state, {:phr, slave, address, value}) when is_integer(value) do
     write(state, {slave, :hr, address, value})
   end
-  #cambiar funcion ya que la lista puede contener valores no enteros
+
+  # cambiar funcion ya que la lista puede contener valores no enteros
   def apply(state, {:phr, slave, address, values}) when is_list(values) do
     writes(state, {slave, :hr, address, values})
   end
 
   # para el esclavo se necesitan combiar la estructura de la memoria...
   defp reads(state, {slave, type, address, count}) do
-    #check the incoming request is valid for the current model.
+    # check the incoming request is valid for the current model.
     if check_request(state, {slave, type, address, count}) do
       map = Map.fetch!(state, slave)
-      list = for point <- address..address+count-1 do
-        Map.fetch!(map, {type, point})
-      end
+
+      list =
+        for point <- address..(address + count - 1) do
+          Map.fetch!(map, {type, point})
+        end
+
       {state, list}
     else
       {state, :error}
@@ -57,17 +61,21 @@ defmodule Modbus.Model do
   defp writes(state, {slave, type, address, values}) do
     cmap = Map.fetch!(state, slave)
     final = address + Enum.count(values)
-    {^final, nmap} = Enum.reduce(values, {address, cmap}, fn (value, {i, map}) ->
-      {i+1, Map.put(map, {type, i}, value)}
-    end)
+
+    {^final, nmap} =
+      Enum.reduce(values, {address, cmap}, fn value, {i, map} ->
+        {i + 1, Map.put(map, {type, i}, value)}
+      end)
+
     {Map.put(state, slave, nmap), nil}
   end
 
   def check_request(state, {slave, type, addr, count}) do
     if Map.has_key?(state, slave) do
-      addr_end = addr+count-1
+      addr_end = addr + count - 1
+
       if Map.has_key?(state[slave], {type, addr}) && Map.has_key?(state[slave], {type, addr_end}) do
-         true
+        true
       else
         false
       end
@@ -75,5 +83,4 @@ defmodule Modbus.Model do
       false
     end
   end
-
 end

@@ -3,13 +3,14 @@ defmodule Modbus.Tcp do
   alias Modbus.Request
   alias Modbus.Response
   require Logger
+
   def pack_req(cmd, transid) do
-    cmd |> Request.pack |> wrap(transid)
+    cmd |> Request.pack() |> wrap(transid)
   end
 
   def parse_req(wraped) do
     {pack, transid} = wraped |> unwrap
-    {pack |> Request.parse, transid}
+    {pack |> Request.parse(), transid}
   end
 
   def pack_res(cmd, values, transid) do
@@ -21,27 +22,29 @@ defmodule Modbus.Tcp do
   end
 
   def res_len(cmd) do
-    Response.length(cmd) + 6;
+    Response.length(cmd) + 6
   end
 
   def req_len(cmd) do
-    Request.length(cmd) + 6;
+    Request.length(cmd) + 6
   end
 
   def wrap(payload, transid) do
-    size =  :erlang.byte_size(payload)
+    size = :erlang.byte_size(payload)
     <<transid::16, 0, 0, size::16, payload::binary>>
   end
 
   def unwrap(<<transid::16, 0, 0, size::16, payload::binary>> = msg, transid) do
     r_size = :erlang.byte_size(payload)
+
     data =
       if size == r_size do
-          payload
+        payload
       else
-          Logger.error("#{__MODULE__} size = #{size}, payload_size = #{r_size}, msg = #{inspect(msg)}")
-          nil
+        Logger.error("#{__MODULE__} size = #{size}, payload_size = #{r_size}, msg = #{inspect(msg)}")
+        nil
       end
+
     data
   end
 
@@ -52,8 +55,7 @@ defmodule Modbus.Tcp do
   end
 
   def unwrap(inv_data) do
-    Logger.error("#{__MODULE__} invalid data: #{inspect inv_data}")
-    raise("#{__MODULE__} invalid data: #{inspect inv_data}")
+    Logger.error("#{__MODULE__} invalid data: #{inspect(inv_data)}")
+    raise("#{__MODULE__} invalid data: #{inspect(inv_data)}")
   end
-
 end

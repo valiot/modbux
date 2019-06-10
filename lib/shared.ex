@@ -18,11 +18,11 @@ defmodule Modbus.Model.Shared do
     Agent.get_and_update(pid, fn model ->
       case Model.apply(model, cmd) do
         {new, :error} ->
-          {:error,new}
+          {:error, new}
+
         {new, values} ->
           {{:ok, values}, new}
       end
-
     end)
   end
 

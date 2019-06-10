@@ -4,7 +4,7 @@ defmodule Modbus.Tcp.Client do
   use GenServer
   @timeout 2000
   @port 502
-  @ip {0,0,0,0}
+  @ip {0, 0, 0, 0}
   @active false
   require Logger
   @to 2000
@@ -79,12 +79,11 @@ defmodule Modbus.Tcp.Client do
             pending_msg: %{},
             cmd: nil
 
-
   @type client_option ::
-        {:ip, {byte(),byte(),byte(),byte()}}
-      | {:active, boolean}
-      | {:tcp_port, non_neg_integer}
-      | {:timeout, non_neg_integer}
+          {:ip, {byte(), byte(), byte(), byte()}}
+          | {:active, boolean}
+          | {:tcp_port, non_neg_integer}
+          | {:timeout, non_neg_integer}
   ##########################################
   # Public API
   ##########################################
@@ -125,7 +124,6 @@ defmodule Modbus.Tcp.Client do
     }
   end
 
-
   @doc """
   Stops the Client.
   """
@@ -137,7 +135,7 @@ defmodule Modbus.Tcp.Client do
   @doc """
   Gets the state of the Client.
   """
-  #@spec state(GenServer.server()) :: {term() | :closed, [uart_option]}
+  # @spec state(GenServer.server()) :: {term() | :closed, [uart_option]}
   def state(pid) do
     GenServer.call(pid, :state)
   end
@@ -164,7 +162,7 @@ defmodule Modbus.Tcp.Client do
     GenServer.call(pid, :close)
   end
 
-   @doc """
+  @doc """
   send a request to Modbus TCP Server.
 
   `cmd` is one of:
@@ -198,18 +196,20 @@ defmodule Modbus.Tcp.Client do
     GenServer.call(pid, :flush)
   end
 
-  #callbacks
+  # callbacks
   def init(args) do
     port = args[:tcp_port] || @port
     ip = args[:ip] || @ip
     timeout = args[:timeout] || @timeout
     status = :closed
+
     active =
       if args[:active] == nil do
         @active
       else
         args[:active]
       end
+
     state = %Client{ip: ip, tcp_port: port, timeout: timeout, status: status, active: active}
     {:ok, state}
   end
@@ -226,23 +226,32 @@ defmodule Modbus.Tcp.Client do
         ip = args[:ip] || state.ip
         timeout = args[:timeout] || state.timeout
         d_pid = args[:d_pid] || state.d_pid
+
         active =
           if args[:active] == nil do
             state.active
           else
             args[:active]
           end
+
         new_state = %Client{state | ip: ip, tcp_port: port, timeout: timeout, active: active, d_pid: d_pid}
         {:reply, :ok, new_state}
+
       _ ->
         {:reply, :error, state}
     end
   end
 
-  def handle_call(:connect, {from,_ref}, state) do
+  def handle_call(:connect, {from, _ref}, state) do
     Logger.debug("(#{__MODULE__}, :connect) state: #{inspect(state)}")
-    Logger.debug( "(#{__MODULE__}, :connect) from: #{inspect(from)}")
-    case :gen_tcp.connect(state.ip, state.tcp_port, [:binary, packet: :raw, active: state.active], state.timeout) do
+    Logger.debug("(#{__MODULE__}, :connect) from: #{inspect(from)}")
+
+    case :gen_tcp.connect(
+           state.ip,
+           state.tcp_port,
+           [:binary, packet: :raw, active: state.active],
+           state.timeout
+         ) do
       {:ok, socket} ->
         ctrl_pid =
           if state.d_pid == nil do
@@ -250,50 +259,63 @@ defmodule Modbus.Tcp.Client do
           else
             state.d_pid
           end
-        new_state = %Client{state | socket: socket, status: :connected, d_pid: ctrl_pid} #state
+
+        # state
+        new_state = %Client{state | socket: socket, status: :connected, d_pid: ctrl_pid}
         {:reply, :ok, new_state}
+
       {:error, reason} ->
         Logger.error("(#{__MODULE__}, :connect) reason #{inspect(reason)}")
-        {:reply, {:error,reason}, state} #state
+        # state
+        {:reply, {:error, reason}, state}
     end
   end
 
   def handle_call(:close, _from, state) do
     Logger.debug("(#{__MODULE__}, :close) state: #{inspect(state)}")
+
     if state.socket != nil do
       new_state = close_socket(state)
       {:reply, :ok, new_state}
     else
       Logger.error("(#{__MODULE__}, :close) No port to close")
-      {:reply, {:error, :closed}, state} #state
+      # state
+      {:reply, {:error, :closed}, state}
     end
   end
 
   def handle_call({:request, cmd}, _from, state) do
     Logger.debug("(#{__MODULE__}, :request) state: #{inspect(state)}")
+
     case state.status do
       :connected ->
         request = Tcp.pack_req(cmd, state.transid)
         length = Tcp.res_len(cmd)
+
         case :gen_tcp.send(state.socket, request) do
           :ok ->
             new_state =
-            if state.active do
-              new_msg = Map.put(state.pending_msg, state.transid, cmd)
-              n_msg =
-                if (state.transid + 1 > 0xffff) do
-                  0
-                else
-                  state.transid+1
-                end
-              %Client{state | msg_len: length, cmd: cmd, pending_msg: new_msg, transid: n_msg}
-            else
-              %Client{state | msg_len: length, cmd: cmd}
-            end
+              if state.active do
+                new_msg = Map.put(state.pending_msg, state.transid, cmd)
+
+                n_msg =
+                  if state.transid + 1 > 0xFFFF do
+                    0
+                  else
+                    state.transid + 1
+                  end
+
+                %Client{state | msg_len: length, cmd: cmd, pending_msg: new_msg, transid: n_msg}
+              else
+                %Client{state | msg_len: length, cmd: cmd}
+              end
+
             {:reply, :ok, new_state}
+
           {:error, :closed} ->
             new_state = close_socket(state)
             {:reply, {:error, :closed}, new_state}
+
           {:error, reason} ->
             {:reply, {:error, reason}, state}
         end
@@ -302,9 +324,11 @@ defmodule Modbus.Tcp.Client do
         {:reply, {:error, :closed}, state}
     end
   end
-#only in passive mode
+
+  # only in passive mode
   def handle_call(:confirmation, _from, state) do
     Logger.debug("(#{__MODULE__}, :confirmation) state: #{inspect(state)}")
+
     if state.active do
       {:reply, :error, state}
     else
@@ -316,25 +340,32 @@ defmodule Modbus.Tcp.Client do
               Logger.debug("(#{__MODULE__}, :confirmation) response: #{inspect(response)}")
 
               n_msg =
-                if (state.transid + 1 > 0xffff) do
+                if state.transid + 1 > 0xFFFF do
                   0
                 else
-                  state.transid+1
+                  state.transid + 1
                 end
+
               new_state = %Client{state | transid: n_msg, cmd: nil, msg_len: 0}
+
               case values do
-                nil -> # escribió algo
+                # escribió algo
+                nil ->
                   {:reply, :ok, new_state}
-                _ -> # leemos algo
+
+                # leemos algo
+                _ ->
                   {:reply, {:ok, values}, new_state}
               end
+
             {:error, reason} ->
               Logger.error("(#{__MODULE__}, :confirmation) reason: #{inspect(reason)}")
-              #cerrar?
+              # cerrar?
               new_state = close_socket(state)
               new_state = %Client{new_state | cmd: nil, msg_len: 0}
               {:reply, {:error, reason}, new_state}
           end
+
         :closed ->
           {:reply, {:error, :closed}, state}
       end
@@ -346,20 +377,21 @@ defmodule Modbus.Tcp.Client do
     {:reply, {:ok, state.pending_msg}, new_state}
   end
 
-  #only for active mode
-  def handle_info({:tcp,_port, response}, state) do
+  # only for active mode
+  def handle_info({:tcp, _port, response}, state) do
     Logger.debug("(#{__MODULE__}, :message_active) response: #{inspect(response)}")
     Logger.debug("(#{__MODULE__}, :message_active) state: #{inspect(state)}")
 
-    h = :binary.at(response,0)
-    l = :binary.at(response,1)
-    transid= h*256+l
+    h = :binary.at(response, 0)
+    l = :binary.at(response, 1)
+    transid = h * 256 + l
     Logger.debug("(#{__MODULE__}, :message_active) transid: #{inspect(transid)}")
 
     case Map.fetch(state.pending_msg, transid) do
       :error ->
         Logger.error("(#{__MODULE__}, :message_active) unknown transaction id")
         {:noreply, state}
+
       {:ok, cmd} ->
         values = Tcp.parse_res(cmd, response, transid)
         msg = {:modbus_tcp, cmd, values}
@@ -368,10 +400,9 @@ defmodule Modbus.Tcp.Client do
         new_state = %Client{state | cmd: nil, msg_len: 0, pending_msg: new_pending_msg}
         {:noreply, new_state}
     end
-
   end
 
-  def handle_info({:tcp_closed,_port}, state) do
+  def handle_info({:tcp_closed, _port}, state) do
     Logger.info("(#{__MODULE__}, :tcp_close) Server close the port")
     new_state = close_socket(state)
     {:noreply, new_state}
@@ -387,5 +418,4 @@ defmodule Modbus.Tcp.Client do
     new_state = %Client{state | socket: nil, status: :closed}
     new_state
   end
-
 end

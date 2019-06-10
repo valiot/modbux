@@ -84,7 +84,7 @@ defmodule Modbus.Response do
     nil
   end
 
-  #error
+  # error
   def parse(_cmd, nil) do
     nil
   end
@@ -127,8 +127,7 @@ defmodule Modbus.Response do
   end
 
   defp writes(_type, slave, function, address, values) do
-    count =  Enum.count(values)
+    count = Enum.count(values)
     <<slave, function, address::16, count::16>>
   end
-
 end

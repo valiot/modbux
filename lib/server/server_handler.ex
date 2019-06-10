@@ -6,28 +6,33 @@ defmodule Modbus.Tcp.Server.Handler do
   require Logger
 
   defstruct model_pid: nil,
+            parent_pid: nil,
             socket: nil
 
-  def start_link([socket, model_pid]) do
-    GenServer.start_link(__MODULE__, [socket, model_pid])
+  def start_link([socket, model_pid, parent_pid]) do
+    GenServer.start_link(__MODULE__, [socket, model_pid, parent_pid])
   end
 
-  def init([socket, model_pid]) do
-    {:ok, %Handler{model_pid: model_pid, socket: socket}}
+  def init([socket, model_pid, parent_pid]) do
+    {:ok, %Handler{model_pid: model_pid, socket: socket, parent_pid: parent_pid}}
   end
 
   def handle_info({:tcp, socket, data}, state) do
     Logger.debug("(#{__MODULE__}) Received: #{data} ")
     {cmd, transid} = Tcp.parse_req(data)
-    Logger.info(inspect({cmd, transid}))
+    Logger.debug("(#{__MODULE__}) Received Modbus request: #{inspect({cmd, transid})}")
+
     case Shared.apply(state.model_pid, cmd) do
       {:ok, values} ->
-        Logger.info("msg send")
+        Logger.info("(#{__MODULE__}) msg send")
         resp = Tcp.pack_res(cmd, values, transid)
+        if !is_nil(state.parent_pid), do: notify(state.parent_pid, cmd)
         :ok = :gen_tcp.send(socket, resp)
+
       :error ->
-        Logger.info("an error has occur")
+        Logger.info("(#{__MODULE__}) an error has occur")
     end
+
     {:noreply, state}
   end
 
@@ -37,7 +42,7 @@ defmodule Modbus.Tcp.Server.Handler do
   end
 
   def handle_info({:tcp_error, socket, reason}, state) do
-    Logger.error("(#{__MODULE__})TCP error: #{reason}")
+    Logger.error("(#{__MODULE__}) TCP error: #{reason}")
     :gen_tcp.close(socket)
     {:stop, :normal, state}
   end
@@ -53,5 +58,9 @@ defmodule Modbus.Tcp.Server.Handler do
   def terminate(reason, state) do
     Logger.error("(#{__MODULE__}) Error: #{inspect(reason)}")
     :gen_tcp.close(state.socket)
+  end
+
+  defp notify(pid, cmd) do
+    send(pid, {:modbus_tcp, {:server_request, cmd}})
   end
 end

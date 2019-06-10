@@ -24,6 +24,14 @@ defmodule Modbus.Tcp.Server do
     GenServer.stop(pid)
   end
 
+  def update(pid, cmd) do
+    GenServer.call(pid, {:update, cmd})
+  end
+
+  def get_db(pid) do
+    GenServer.call(pid, :get_db)
+  end
+
   def init({params, parent_pid}) do
     port = Keyword.get(params, :port, @port)
     timeout = Keyword.get(params, :timeout, @to)
@@ -49,6 +57,24 @@ defmodule Modbus.Tcp.Server do
   def terminate(reason, state) do
     Logger.error("(#{__MODULE__}) Error: #{inspect(reason)}")
     :gen_tcp.close(state.listener)
+  end
+
+  def handle_call({:update, request}, _from, state) do
+    res =
+      case Shared.apply(state.model_pid, request) do
+        {:ok, values} ->
+          Logger.debug("(#{__MODULE__}) DB update: #{inspect request}, #{inspect values}")
+          :ok
+
+        :error ->
+          Logger.debug("(#{__MODULE__}) an error has occur")
+          :error
+      end
+    {:reply, res, state}
+  end
+
+  def handle_call(:get_db, _from, state) do
+    {:reply, Shared.state(state.model_pid), state}
   end
 
   def handle_continue(:setup, state) do

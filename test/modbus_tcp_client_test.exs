@@ -1,11 +1,8 @@
-defmodule ModbusTcpTest do
+defmodule ModbusTcpClientTest do
   use ExUnit.Case
+  alias Modbus.Tcp.{Client, Slave, Master}
 
-  test "test Slave and Master desconexión" do
-    # run with: mix slave
-    alias Modbus.Tcp.Slave
-    alias Modbus.Tcp.Master
-
+  test "slave test and master disconnect" do
     # start your slave with a shared model
     model = %{0x50 => %{{:c, 0x5152} => 0}}
     {:ok, spid} = Slave.start_link(model: model)
@@ -18,11 +15,8 @@ defmodule ModbusTcpTest do
   end
 
   test "test Client (connection, stop, configuration)" do
-    alias Modbus.Tcp.Slave
-    alias Modbus.Tcp.Client
-    RingLogger.attach()
     model = %{80 => %{{:c, 20818} => 0, {:c, 20819} => 1, {:hr, 20817} => 0}}
-    {:ok, spid} = Slave.start_link(model: model, port: 2000)
+    {:ok, _spid} = Slave.start_link(model: model, port: 2000)
     {:ok, cpid} = Client.start_link(ip: {127, 0, 0, 1}, tcp_port: 3000)
     state_cpid = Client.state(cpid)
     assert state_cpid != Client.configure(cpid, tcp_port: 2000)
@@ -33,9 +27,6 @@ defmodule ModbusTcpTest do
   end
 
   test "test Client errors" do
-    alias Modbus.Tcp.Slave
-    alias Modbus.Tcp.Client
-    RingLogger.attach()
     {:ok, cpid} = Client.start_link(ip: {127, 0, 0, 1}, port: 5000)
     assert {:error, :econnrefused} == Client.connect(cpid)
     assert {:error, :closed} == Client.close(cpid)

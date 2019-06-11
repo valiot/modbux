@@ -46,4 +46,12 @@ defmodule ModbusTcpServerTest do
     assert Modbus.Tcp.Client.confirmation(c_pid) == {:ok, [0]}
     assert_received {:modbus_tcp, {:server_request, {:rc, 80, 20818, 1}}}
   end
+
+  test "DB updates from Elixir" do
+    model = %{0x50 => %{{:c, 0x5152} => 0}}
+    {:ok, s_pid} = Server.start_link(model: model, port: 2002, active: true)
+    assert Server.update(s_pid, {:fc, 0x50, 0x5152, 1}) == :ok
+    assert Server.get_db(s_pid) == %{80 => %{{:c, 20818} => 1}}
+    refute_received {:modbus_tcp, {:server_request, {:rc, 80, 20818, 1}}}
+  end
 end

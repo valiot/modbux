@@ -21,6 +21,7 @@ defmodule Modbus.Mixfile do
 
   defp deps do
     [
+      {:circuits_uart, "~> 1.3"},
       {:ex_doc, "~> 0.16", only: :dev},
       {:ring_logger, "~> 0.4"}
     ]

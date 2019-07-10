@@ -17,7 +17,6 @@ defmodule Modbus.Rtu.Framer do
               processed: <<>>,
               in_process: <<>>,
               fc: nil,
-              slave_id: nil,
               error: nil,
               error_message: nil,
               lines: []
@@ -37,10 +36,10 @@ defmodule Modbus.Rtu.Framer do
   end
 
   def remove_framing(data, state) do
-    Logger.debug("new data #{inspect(state)}")
+    # Logger.debug("new data #{inspect(state)}")
     new_state = process_data(state.in_process <> data, state.expected_length, state.processed, state)
     rc = if buffer_empty?(new_state), do: :ok, else: :in_frame
-    Logger.debug("new data processed #{inspect(new_state)}, #{inspect(rc)}")
+    # Logger.debug("new data processed #{inspect(new_state)}, #{inspect(rc)}")
 
     if has_error?(new_state),
       do: dispatch({:ok, new_state.error_message, new_state}),
@@ -49,12 +48,12 @@ defmodule Modbus.Rtu.Framer do
 
   def frame_timeout(state) do
     partial_line = {:partial, state.processed <> state.in_process}
-    new_state = %{state | processed: <<>>, in_process: <<>>}
+    new_state = %State{max_len: state.max_len, behavior: state.behavior}
     {:ok, [partial_line], new_state}
   end
 
   def flush(direction, state) when direction == :receive or direction == :both do
-    %State{max_len: state.max_len, slave_id: state.slave_id, behavior: state.behavior}
+    %State{max_len: state.max_len, behavior: state.behavior}
   end
 
   def flush(_direction, state) do
@@ -65,20 +64,20 @@ defmodule Modbus.Rtu.Framer do
 
   # handle empty byte
   defp process_data(<<>>, _len, _in_process, state) do
-    Logger.debug("fin de ciclo #{inspect(state)}")
+    # Logger.debug("End #{inspect(state)}")
     state
   end
 
   # get first byte (index 0)
   defp process_data(<<slave_id::size(8), b_tail::binary>>, nil, processed, %{index: 0} = state) do
-    Logger.debug("line 0")
+    # Logger.debug("line 0")
     new_state = %{state | index: 1, processed: processed <> <<slave_id>>, in_process: <<>>}
     process_data(b_tail, nil, new_state.processed, new_state)
   end
 
   # get second byte (function code) (index 1)
   defp process_data(<<fc::size(8), b_tail::binary>>, nil, processed, %{index: 1} = state) do
-    Logger.debug("line 1")
+    # Logger.debug("line 1")
     new_state = %{state | fc: fc, index: 2, processed: processed <> <<fc>>}
     process_data(b_tail, nil, new_state.processed, new_state)
   end
@@ -86,18 +85,15 @@ defmodule Modbus.Rtu.Framer do
   # Clause for functions code => 5, 6
   defp process_data(<<len::size(8), b_tail::binary>>, nil, processed, %{index: 2, fc: fc} = state)
        when fc in [5, 6] do
-    Logger.debug("fc 5 or 6")
-
+    # Logger.debug("fc 5 or 6")
     new_state = %{state | expected_length: 8, index: 3, processed: processed <> <<len>>}
-
     process_data(b_tail, new_state.expected_length, new_state.processed, new_state)
   end
 
   # Clause for functions code => 15 and 16
   defp process_data(<<len::size(8), b_tail::binary>>, nil, processed, %{index: 2, fc: fc} = state)
        when fc in [15, 16] do
-    Logger.debug("fc 15 or 16")
-
+    # Logger.debug("fc 15 or 16")
     new_state =
       if state.behavior == :slave do
         %{state | expected_length: 7, index: 3, processed: processed <> <<len>>}
@@ -110,7 +106,7 @@ defmodule Modbus.Rtu.Framer do
 
   defp process_data(<<len::size(8), b_tail::binary>>, _len, processed, %{index: 6, fc: fc} = state)
        when fc in [15, 16] do
-    Logger.debug("fc 15 or 16, len")
+    # Logger.debug("fc 15 or 16, len")
 
     new_state =
       if state.behavior == :slave do
@@ -125,7 +121,7 @@ defmodule Modbus.Rtu.Framer do
   # Clause for functions code => 1, 2, 3 and 4
   defp process_data(<<len::size(8), b_tail::binary>>, nil, processed, %{index: 2, fc: fc} = state)
        when fc in 1..4 do
-    Logger.debug("fc 1, 2, 3 or 4")
+    # Logger.debug("fc 1, 2, 3 or 4")
 
     new_state =
       if state.behavior == :slave do
@@ -140,7 +136,7 @@ defmodule Modbus.Rtu.Framer do
   # Clause for exceptions.
   defp process_data(<<len::size(8), b_tail::binary>>, nil, processed, %{index: 2, fc: fc} = state)
        when fc in 129..144 do
-    Logger.debug("exceptions")
+    # Logger.debug("exceptions")
 
     new_state = %{state | expected_length: 5, index: 3, processed: processed <> <<len>>}
 
@@ -155,9 +151,9 @@ defmodule Modbus.Rtu.Framer do
   defp process_data(<<data::size(8), b_tail::binary>>, len, processed, state) when is_binary(processed) do
     current_data = processed <> <<data>>
 
-    Logger.info(
-      "(#{__MODULE__}) data_len: #{byte_size(current_data)}, len: #{inspect(len)}, state: #{inspect(state)}"
-    )
+    # Logger.info(
+    #   "(#{__MODULE__}) data_len: #{byte_size(current_data)}, len: #{inspect(len)}, state: #{inspect(state)}"
+    # )
 
     if len == byte_size(current_data) do
       new_state = %{
@@ -199,7 +195,7 @@ defmodule Modbus.Rtu.Framer do
     expected_crc = Kernel.binary_part(packet, byte_size(packet), -2)
     <<hi_crc, lo_crc>> = Helper.crc(packet_without_crc)
     real_crc = <<lo_crc, hi_crc>>
-    Logger.info("(#{__MODULE__}) #{inspect(expected_crc)} == #{inspect(real_crc)}")
+    # Logger.info("(#{__MODULE__}) #{inspect(expected_crc)} == #{inspect(real_crc)}")
 
     if real_crc == expected_crc,
       do: state,

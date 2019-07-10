@@ -2,6 +2,7 @@ defmodule Modbus.Rtu.Slave do
   @moduledoc false
   alias Modbus.Model.Shared
   alias Modbus.Rtu.{Slave, Framer}
+  alias Modbus.Rtu
   alias Circuits.UART
   require Logger
 
@@ -32,11 +33,12 @@ defmodule Modbus.Rtu.Slave do
     parent_pid = if Keyword.get(params, :active, false), do: parent_pid
     tty = Keyword.fetch!(params, :tty)
     model = Keyword.fetch!(params, :model)
+    Logger.info("(#{__MODULE__}) Starting Modbus Slave at \"#{tty}\"")
     uart_otps = Keyword.get(params, :uart_otps, speed: 115_200)
     {:ok, model_pid} = Shared.start_link(model: model)
     {:ok, u_pid} = UART.start_link()
-    # checar espec de modbus para el rx_framing_timeout.
-    UART.open(u_pid, tty, [framing: {Framer, behavior: :master}, rx_framing_timeout: 500] ++ uart_otps)
+    # checar specs de modbus para el rx_framing_timeout.
+    UART.open(u_pid, tty, [framing: {Framer, behavior: :slave}, rx_framing_timeout: 500] ++ uart_otps)
 
     state = %Slave{
       model_pid: model_pid,
@@ -72,5 +74,46 @@ defmodule Modbus.Rtu.Slave do
 
   def handle_call(:get_db, _from, state) do
     {:reply, Shared.state(state.model_pid), state}
+  end
+
+  def handle_info({:circuits_uart, device, {:error, reason}}, state) do
+    Logger.warn("(#{__MODULE__})  Error with \"#{device}\": #{reason}")
+    # Notificar error
+    {:noreply, state}
+  end
+
+  def handle_info({:circuits_uart, _device, {:partial, data}}, state) do
+    Logger.warn("(#{__MODULE__})  Timeout: #{inspect(data)}")
+    # responder timeout
+    {:noreply, state}
+  end
+
+  def handle_info({:circuits_uart, device, modbus_frame}, state) do
+    Logger.info("(#{__MODULE__}) Recieved from UART (#{device}): #{inspect(modbus_frame)}")
+    cmd = Rtu.parse_req(modbus_frame)
+    Logger.debug("(#{__MODULE__}) Received Modbus request: #{inspect(cmd)}")
+
+    case Shared.apply(state.model_pid, cmd) do
+      {:ok, values} ->
+        response = Rtu.pack_res(cmd, values)
+        if !is_nil(state.parent_pid), do: notify(state.parent_pid, cmd)
+        UART.write(state.uart_pid, response)
+
+      :error ->
+        Logger.info("(#{__MODULE__}) An error has occur for cmd: #{inspect(cmd)}")
+    end
+
+    {:noreply, state}
+  end
+
+  # Catch all clause
+  def handle_info(msg, state) do
+    Logger.warn("(#{__MODULE__})  Unknown msg: #{inspect(msg)}")
+    # responder timeout
+    {:noreply, state}
+  end
+
+  defp notify(pid, cmd) do
+    send(pid, {:modbus_rtu, {:slave_request, cmd}})
   end
 end

@@ -7,8 +7,8 @@ defmodule TestHelper do
   alias Modbus.Model
   alias Modbus.Rtu
   alias Modbus.Tcp
-  alias Modbus.Tcp.Master
-  alias Modbus.Tcp.Slave
+  alias Modbus.Tcp.Client
+  alias Modbus.Tcp.Server
 
   def pp1(cmd, req, res, val, model) do
     assert req == Request.pack(cmd)
@@ -34,12 +34,13 @@ defmodule TestHelper do
     assert byte_size(tcp_res) == Tcp.res_len(cmd)
     assert byte_size(tcp_req) == Tcp.req_len(cmd)
     # master
-    {:ok, slave_pid} = Slave.start_link(model: model)
-    {:ok, %{port: port}} = Slave.id(slave_pid)
-    {:ok, master_pid} = Master.start_link(port: port, ip: {127, 0, 0, 1})
+    Server.start_link(model: model, port: 2002)
+    {:ok, master_pid} = Client.start_link(tcp_port: 2002, ip: {127, 0, 0, 1})
+    Client.connect(master_pid)
 
     for _ <- 0..10 do
-      assert {:ok, val} == Master.exec(master_pid, cmd)
+      Client.request(master_pid, cmd)
+      assert {:ok, val} == Client.confirmation(master_pid)
     end
   end
 
@@ -64,12 +65,13 @@ defmodule TestHelper do
     assert nil == Tcp.parse_res(cmd, tcp_res, 1)
     assert byte_size(tcp_res) == Tcp.res_len(cmd)
     # master
-    {:ok, slave_pid} = Slave.start_link(model: model0)
-    {:ok, %{port: port}} = Slave.id(slave_pid)
-    {:ok, master_pid} = Master.start_link(port: port, ip: {127, 0, 0, 1})
+    Server.start_link(model: model0, port: 2001)
+    {:ok, master_pid} = Client.start_link(tcp_port: 2001, ip: {127, 0, 0, 1})
+    Client.connect(master_pid)
 
     for _ <- 0..10 do
-      assert :ok == Master.exec(master_pid, cmd)
+      Client.request(master_pid, cmd)
+      assert :ok == Client.confirmation(master_pid)
     end
   end
 end

@@ -1,108 +1,76 @@
-defmodule Modbus.Tcp.Slave do
+defmodule Modbus.Rtu.Slave do
   @moduledoc false
-  import Supervisor.Spec
   alias Modbus.Model.Shared
-  alias Modbus.Tcp
+  alias Modbus.Rtu.{Slave, Framer}
+  alias Circuits.UART
   require Logger
 
-  def start_link(params, opts \\ []) do
-    Agent.start_link(fn -> init(params) end, opts)
+  defstruct model_pid: nil,
+            uart_pid: nil,
+            tty: nil,
+            uart_otps: nil,
+            parent_pid: nil
+
+  def start_link(params) do
+    gen_opts = Keyword.get(params, :gen_opts, [])
+    GenServer.start_link(__MODULE__, {params, self()}, gen_opts)
   end
 
   def stop(pid) do
-    Agent.stop(pid)
+    GenServer.stop(pid)
   end
 
-  # comply with formward id
-  def id(pid) do
-    case state(pid) do
-      {:error, reason} ->
-        {:error, reason}
-
-      _ ->
-        Agent.get(pid, fn %{ip: ip, port: port, name: name} -> {:ok, %{ip: ip, port: port, name: name}} end)
-    end
+  def update(pid, cmd) do
+    GenServer.call(pid, {:update, cmd})
   end
 
-  def state(pid) do
-    Agent.get(pid, fn state -> state end)
+  def get_db(pid) do
+    GenServer.call(pid, :get_db)
   end
 
-  defp init(params) do
+  def init({params, parent_pid}) do
+    parent_pid = if Keyword.get(params, :active, false), do: parent_pid
+    tty = Keyword.fetch!(params, :tty)
     model = Keyword.fetch!(params, :model)
-    {:ok, shared} = Shared.start_link(model: model)
-    port = Keyword.get(params, :port, 0)
+    uart_otps = Keyword.get(params, :uart_otps, speed: 115_200)
+    {:ok, model_pid} = Shared.start_link(model: model)
+    {:ok, u_pid} = UART.start_link()
+    # checar espec de modbus para el rx_framing_timeout.
+    UART.open(u_pid, tty, [framing: {Framer, behavior: :master}, rx_framing_timeout: 500] ++ uart_otps)
 
-    case :gen_tcp.listen(port, [:binary, packet: :raw, active: false]) do
-      {:ok, listener} ->
-        {:ok, {ip, port}} = :inet.sockname(listener)
-        name = Keyword.get(params, :name, name(ip, port))
-        spec = worker(__MODULE__, [], restart: :temporary, function: :start_child)
-        {:ok, sup} = Supervisor.start_link([spec], strategy: :simple_one_for_one)
-        accept = spawn_link(fn -> accept(listener, sup, shared) end)
-        %{ip: ip, port: port, name: name, shared: shared, sup: sup, accept: accept, listener: listener}
+    state = %Slave{
+      model_pid: model_pid,
+      parent_pid: parent_pid,
+      tty: tty,
+      uart_pid: u_pid,
+      uart_otps: uart_otps
+    }
 
-      {:error, reason} ->
-        {:error, reason}
-    end
+    {:ok, state}
   end
 
-  defp name(ip, port) do
-    ips = :inet_parse.ntoa(ip)
-    mod = Atom.to_string(__MODULE__)
-    "#{mod}:#{ips}:#{port}"
+  def terminate(:normal, _state), do: nil
+
+  def terminate(reason, state) do
+    Logger.error("(#{__MODULE__}) Error: #{inspect(reason)}, state: #{inspect(state)}")
   end
 
-  defp accept(listener, sup, model) do
-    case :gen_tcp.accept(listener) do
-      {:ok, socket} ->
-        Logger.debug("New Client")
-        {:ok, pid} = Supervisor.start_child(sup, [socket, model])
-        :ok = :gen_tcp.controlling_process(socket, pid)
-        send(pid, :go)
-        accept(listener, sup, model)
+  def handle_call({:update, request}, _from, state) do
+    res =
+      case Shared.apply(state.model_pid, request) do
+        {:ok, values} ->
+          Logger.debug("(#{__MODULE__}) DB update: #{inspect(request)}, #{inspect(values)}")
+          :ok
 
-      {:error, reason} ->
-        Logger.debug("Error A: #{reason}")
-    end
+        :error ->
+          Logger.debug("(#{__MODULE__}) an error has occur")
+          :error
+      end
+
+    {:reply, res, state}
   end
 
-  def start_child(socket, shared) do
-    {:ok,
-     spawn_link(fn ->
-       receive do
-         :go ->
-           loop(socket, shared)
-       end
-     end)}
-  end
-
-  defp loop(socket, shared) do
-    case :gen_tcp.recv(socket, 0) do
-      {:ok, data} ->
-        {cmd, transid} = Tcp.parse_req(data)
-        Logger.info(inspect({cmd, transid}))
-
-        case Shared.apply(shared, cmd) do
-          {:ok, values} ->
-            Logger.info("msg send")
-            resp = Tcp.pack_res(cmd, values, transid)
-            :ok = :gen_tcp.send(socket, resp)
-
-          :error ->
-            Logger.info("an error has occur")
-        end
-
-        loop(socket, shared)
-
-      {:error, reason} ->
-        # agregar shared
-        Logger.info("Error R: #{reason}")
-        # model = Shared.state(shared)
-        # port = state(self())[:port]
-        # Logger.info("Me reconectare")
-        # start_link([model: model, port: port])
-        # loop(socket, shared)
-    end
+  def handle_call(:get_db, _from, state) do
+    {:reply, Shared.state(state.model_pid), state}
   end
 end

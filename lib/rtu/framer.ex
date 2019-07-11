@@ -144,8 +144,8 @@ defmodule Modbus.Rtu.Framer do
   end
 
   # Catch all fc (error)
-  defp process_data(_data, nil, _processed, %{index: 2, fc: _fc} = state) do
-    %{state | error: true, error_message: [{:error, :einval, "Funtion code not supported"}]}
+  defp process_data(_data, nil, processed, %{index: 2, fc: _fc} = state) do
+    %{state | error: true, error_message: [{:error, :einval, processed}]}
   end
 
   defp process_data(<<data::size(8), b_tail::binary>>, len, processed, state) when is_binary(processed) do

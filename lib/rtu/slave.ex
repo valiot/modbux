@@ -34,11 +34,10 @@ defmodule Modbus.Rtu.Slave do
     tty = Keyword.fetch!(params, :tty)
     model = Keyword.fetch!(params, :model)
     Logger.debug("(#{__MODULE__}) Starting Modbus Slave at \"#{tty}\"")
-    uart_otps = Keyword.get(params, :uart_otps, speed: 115_200)
+    uart_otps = Keyword.get(params, :uart_otps, speed: 115_200, rx_framing_timeout: 1000)
     {:ok, model_pid} = Shared.start_link(model: model)
     {:ok, u_pid} = UART.start_link()
-    # checar specs de modbus para el rx_framing_timeout.
-    UART.open(u_pid, tty, [framing: {Framer, behavior: :slave}, rx_framing_timeout: 500] ++ uart_otps)
+    UART.open(u_pid, tty, [framing: {Framer, behavior: :slave}] ++ uart_otps)
 
     state = %Slave{
       model_pid: model_pid,
@@ -76,9 +75,22 @@ defmodule Modbus.Rtu.Slave do
     {:reply, Shared.state(state.model_pid), state}
   end
 
-  def handle_info({:circuits_uart, device, {:error, reason}}, state) do
-    Logger.warn("(#{__MODULE__})  Error with \"#{device}\": #{reason}")
-    # Notificar error
+  def handle_info({:circuits_uart, device, {:error, reason, bad_frame}}, state) do
+    Logger.warn("(#{__MODULE__}) Error with \"#{device}\" received: #{bad_frame}, reason: #{reason}")
+
+    case reason do
+      :einval ->
+        if valid_slave_id?(state, bad_frame) do
+          response = Rtu.pack_res(bad_frame, :einval)
+          Logger.debug("(#{__MODULE__}) Sending error code: #{inspect(response)}, reason: #{reason}")
+          UART.write(state.uart_pid, response)
+        end
+
+      _ ->
+        nil
+    end
+
+    if !is_nil(state.parent_pid), do: notify(state.parent_pid, reason, bad_frame)
     {:noreply, state}
   end
 
@@ -95,12 +107,13 @@ defmodule Modbus.Rtu.Slave do
     case Shared.apply(state.model_pid, cmd) do
       {:ok, values} ->
         response = Rtu.pack_res(cmd, values)
-        if !is_nil(state.parent_pid), do: notify(state.parent_pid, cmd)
+        if !is_nil(state.parent_pid), do: notify(state.parent_pid, nil, cmd)
         UART.write(state.uart_pid, response)
 
       {:error, reason} ->
         Logger.debug("(#{__MODULE__}) An error has occur for cmd: #{inspect(cmd)}")
         response = Rtu.pack_res(modbus_frame, reason)
+        if !is_nil(state.parent_pid), do: notify(state.parent_pid, reason, cmd)
         UART.write(state.uart_pid, response)
 
       nil ->
@@ -116,7 +129,17 @@ defmodule Modbus.Rtu.Slave do
     {:noreply, state}
   end
 
-  defp notify(pid, cmd) do
+  defp valid_slave_id?(state, <<slave_id, _b_tail::binary>>) do
+    state.model_pid
+    |> Shared.state()
+    |> Map.has_key?(slave_id)
+  end
+
+  defp notify(pid, nil, cmd) do
     send(pid, {:modbus_rtu, {:slave_request, cmd}})
+  end
+
+  defp notify(pid, reason, cmd) do
+    send(pid, {:modbus_rtu, {:slave_error, reason, cmd}})
   end
 end

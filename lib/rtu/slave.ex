@@ -33,7 +33,7 @@ defmodule Modbus.Rtu.Slave do
     parent_pid = if Keyword.get(params, :active, false), do: parent_pid
     tty = Keyword.fetch!(params, :tty)
     model = Keyword.fetch!(params, :model)
-    Logger.info("(#{__MODULE__}) Starting Modbus Slave at \"#{tty}\"")
+    Logger.debug("(#{__MODULE__}) Starting Modbus Slave at \"#{tty}\"")
     uart_otps = Keyword.get(params, :uart_otps, speed: 115_200)
     {:ok, model_pid} = Shared.start_link(model: model)
     {:ok, u_pid} = UART.start_link()
@@ -84,12 +84,11 @@ defmodule Modbus.Rtu.Slave do
 
   def handle_info({:circuits_uart, _device, {:partial, data}}, state) do
     Logger.warn("(#{__MODULE__})  Timeout: #{inspect(data)}")
-    # responder timeout
     {:noreply, state}
   end
 
   def handle_info({:circuits_uart, device, modbus_frame}, state) do
-    Logger.info("(#{__MODULE__}) Recieved from UART (#{device}): #{inspect(modbus_frame)}")
+    Logger.debug("(#{__MODULE__}) Recieved from UART (#{device}): #{inspect(modbus_frame)}")
     cmd = Rtu.parse_req(modbus_frame)
     Logger.debug("(#{__MODULE__}) Received Modbus request: #{inspect(cmd)}")
 
@@ -99,8 +98,13 @@ defmodule Modbus.Rtu.Slave do
         if !is_nil(state.parent_pid), do: notify(state.parent_pid, cmd)
         UART.write(state.uart_pid, response)
 
-      :error ->
-        Logger.info("(#{__MODULE__}) An error has occur for cmd: #{inspect(cmd)}")
+      {:error, reason} ->
+        Logger.debug("(#{__MODULE__}) An error has occur for cmd: #{inspect(cmd)}")
+        response = Rtu.pack_res(modbus_frame, reason)
+        UART.write(state.uart_pid, response)
+
+      nil ->
+        nil
     end
 
     {:noreply, state}
@@ -109,7 +113,6 @@ defmodule Modbus.Rtu.Slave do
   # Catch all clause
   def handle_info(msg, state) do
     Logger.warn("(#{__MODULE__})  Unknown msg: #{inspect(msg)}")
-    # responder timeout
     {:noreply, state}
   end
 

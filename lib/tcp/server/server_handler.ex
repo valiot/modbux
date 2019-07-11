@@ -24,13 +24,16 @@ defmodule Modbus.Tcp.Server.Handler do
 
     case Shared.apply(state.model_pid, cmd) do
       {:ok, values} ->
-        Logger.info("(#{__MODULE__}) msg send")
+        Logger.debug("(#{__MODULE__}) msg send")
         resp = Tcp.pack_res(cmd, values, transid)
         if !is_nil(state.parent_pid), do: notify(state.parent_pid, cmd)
         :ok = :gen_tcp.send(socket, resp)
 
-      :error ->
-        Logger.info("(#{__MODULE__}) an error has occur")
+      {:error, reason} ->
+        Logger.debug("(#{__MODULE__}) An error has occur: #{reason}")
+
+      nil ->
+        Logger.debug("(#{__MODULE__}) Message for another slave")
     end
 
     {:noreply, state}

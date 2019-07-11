@@ -12,6 +12,10 @@ defmodule Modbus.Rtu do
     wraped |> unwrap |> Request.parse()
   end
 
+  def pack_res(<<slave_id, fc, _btail::binary>>, :eaddress) do
+    <<slave_id, fc + 0x80, 02>> |> wrap
+  end
+
   def pack_res(cmd, values) do
     cmd |> Response.pack(values) |> wrap
   end

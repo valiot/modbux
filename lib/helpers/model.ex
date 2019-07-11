@@ -1,5 +1,6 @@
 defmodule Modbus.Model do
   @moduledoc false
+  require Logger
 
   def apply(state, {:rc, slave, address, count}) do
     reads(state, {slave, :c, address, count})
@@ -21,7 +22,6 @@ defmodule Modbus.Model do
     write(state, {slave, :c, address, value})
   end
 
-  # cambiar funcion ya que la lista puede contener valores no enteros
   def apply(state, {:fc, slave, address, values}) when is_list(values) do
     writes(state, {slave, :c, address, values})
   end
@@ -30,57 +30,77 @@ defmodule Modbus.Model do
     write(state, {slave, :hr, address, value})
   end
 
-  # cambiar funcion ya que la lista puede contener valores no enteros
   def apply(state, {:phr, slave, address, values}) when is_list(values) do
     writes(state, {slave, :hr, address, values})
   end
 
-  # para el esclavo se necesitan combiar la estructura de la memoria...
-  defp reads(state, {slave, type, address, count}) do
-    # check the incoming request is valid for the current model.
-    if check_request(state, {slave, type, address, count}) do
-      map = Map.fetch!(state, slave)
+  # Error and exception clause
+  def apply(state, _cmd) do
+    # do nothing
+    {nil, state}
+  end
 
-      list =
-        for point <- address..(address + count - 1) do
-          Map.fetch!(map, {type, point})
-        end
+  # Modify the slave/server
+  # returns: :ok, {:ok,values}, {:error, reason}, nil
+  def reads(state, {slave, type, address, count}) do
+    # checks the slave_ids
+    if Map.has_key?(state, slave) do
+      try do
+        map = Map.fetch!(state, slave)
 
-      {state, list}
+        list =
+          for point <- address..(address + count - 1) do
+            Map.fetch!(map, {type, point})
+          end
+
+        {{:ok, list}, state}
+      rescue
+        _error ->
+          {{:error, :eaddress}, state}
+      end
     else
-      {state, :error}
+      # different slave id, do nothing.
+      {nil, state}
     end
   end
 
-  defp write(state, {slave, type, address, value}) do
-    cmap = Map.fetch!(state, slave)
-    nmap = Map.put(cmap, {type, address}, value)
-    {Map.put(state, slave, nmap), nil}
-  end
-
-  defp writes(state, {slave, type, address, values}) do
-    cmap = Map.fetch!(state, slave)
-    final = address + Enum.count(values)
-
-    {^final, nmap} =
-      Enum.reduce(values, {address, cmap}, fn value, {i, map} ->
-        {i + 1, Map.put(map, {type, i}, value)}
-      end)
-
-    {Map.put(state, slave, nmap), nil}
-  end
-
-  def check_request(state, {slave, type, addr, count}) do
+  def write(state, {slave, type, address, value}) do
+    # checks the slave_ids
     if Map.has_key?(state, slave) do
-      addr_end = addr + count - 1
-
-      if Map.has_key?(state[slave], {type, addr}) && Map.has_key?(state[slave], {type, addr_end}) do
-        true
-      else
-        false
+      try do
+        cmap = Map.fetch!(state, slave)
+        nmap = Map.replace!(cmap, {type, address}, value)
+        {{:ok, nil}, Map.put(state, slave, nmap)}
+      rescue
+        _error ->
+          {{:error, :eaddress}, state}
       end
     else
-      false
+      # different slave id, do nothing.
+      {nil, state}
+    end
+  end
+
+  def writes(state, {slave, type, address, values}) do
+    # checks the slave_ids
+    if Map.has_key?(state, slave) do
+      try do
+        cmap = Map.fetch!(state, slave)
+        final = address + Enum.count(values)
+
+        {^final, nmap} =
+          Enum.reduce(values, {address, cmap}, fn value, {i, map} ->
+            {i + 1, Map.replace!(map, {type, i}, value)}
+          end)
+
+        {{:ok, nil}, Map.put(state, slave, nmap)}
+      rescue
+        _error ->
+          {{:error, :eaddress}, state}
+      end
+    else
+      # different slave id, do nothing.
+      {nil, state}
     end
   end
 end

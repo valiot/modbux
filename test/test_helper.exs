@@ -13,7 +13,7 @@ defmodule TestHelper do
   def pp1(cmd, req, res, val, model) do
     assert req == Request.pack(cmd)
     assert cmd == Request.parse(req)
-    assert {model, val} == Model.apply(model, cmd)
+    assert {{:ok, val}, model} == Model.apply(model, cmd)
     assert res == Response.pack(cmd, val)
     assert val == Response.parse(cmd, res)
     # length predition
@@ -47,7 +47,7 @@ defmodule TestHelper do
   def pp2(cmd, req, res, model0, model1) do
     assert req == Request.pack(cmd)
     assert cmd == Request.parse(req)
-    assert {model1, nil} == Model.apply(model0, cmd)
+    assert {{:ok, nil}, model1} == Model.apply(model0, cmd)
     assert res == Response.pack(cmd, nil)
     assert nil == Response.parse(cmd, res)
     # length predition

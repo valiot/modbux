@@ -62,6 +62,7 @@ defmodule Modbus.Request do
     {:phr, slave, address, value}
   end
 
+  # Another slave response an error.
   def parse(<<slave, 15, address::16, count::16, bytes, data::binary>>) do
     ^bytes = Helper.byte_count(count)
     values = Helper.bin_to_bitlist(count, data)
@@ -72,6 +73,15 @@ defmodule Modbus.Request do
     ^bytes = 2 * count
     values = Helper.bin_to_reglist(count, data)
     {:phr, slave, address, values}
+  end
+
+  # exceptions
+  def parse(<<slave, fc, error_code, _b_tail::binary>>) when fc in 129..144 do
+    {:error, slave, fc, error_code}
+  end
+
+  def parse(<<slave, fc, error_code, _b_tail::binary>>) do
+    {:einval, slave, fc, error_code}
   end
 
   def length({:rc, _slave, _address, _count}) do

@@ -18,7 +18,7 @@ defmodule Modbus.Rtu do
   end
 
   # invalid address
-  def pack_res(<<slave_id, fc, _btail::binary>>, :eaddress) do
+  def pack_res(<<slave_id, fc, _btail::binary>>, :eaddr) do
     <<slave_id, fc + 0x80, 02>> |> wrap
   end
 

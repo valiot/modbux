@@ -199,6 +199,6 @@ defmodule Modbus.Rtu.Framer do
 
     if real_crc == expected_crc,
       do: state,
-      else: %{state | error: true, error_message: [{:error, :echksum, "CRC Error"}]}
+      else: %{state | error: true, error_message: [{:error, :ecrc, "CRC Error"}]}
   end
 end

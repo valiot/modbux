@@ -10,20 +10,20 @@ defmodule ModelTest do
   end
 
   test "invalid address" do
-    assert {{:error, :eaddress}, @state} == Model.reads(@state, {80, :c, 20830, 1})
-    assert {{:error, :eaddress}, @state} == Model.write(@state, {80, :c, 20830, 1})
-    assert {{:error, :eaddress}, @state} == Model.writes(@state, {80, :c, 20830, [1, 1]})
+    assert {{:error, :eaddr}, @state} == Model.reads(@state, {80, :c, 20830, 1})
+    assert {{:error, :eaddr}, @state} == Model.write(@state, {80, :c, 20830, 1})
+    assert {{:error, :eaddr}, @state} == Model.writes(@state, {80, :c, 20830, [1, 1]})
   end
 
   test "invalid address (# bytes to read)" do
-    assert {{:error, :eaddress}, @state} == Model.reads(@state, {80, :c, 20818, 3})
-    assert {{:error, :eaddress}, @state} == Model.writes(@state, {80, :c, 20818, [1, 1, 1]})
+    assert {{:error, :eaddr}, @state} == Model.reads(@state, {80, :c, 20818, 3})
+    assert {{:error, :eaddr}, @state} == Model.writes(@state, {80, :c, 20818, [1, 1, 1]})
   end
 
   test "illegal function" do
-    assert {{:error, :eaddress}, @state} == Model.reads(@state, {80, :fc, 20818, 1})
-    assert {{:error, :eaddress}, @state} == Model.write(@state, {80, :fc, 20818, 1})
-    assert {{:error, :eaddress}, @state} == Model.writes(@state, {80, :fc, 20818, [1, 1]})
+    assert {{:error, :eaddr}, @state} == Model.reads(@state, {80, :fc, 20818, 1})
+    assert {{:error, :eaddr}, @state} == Model.write(@state, {80, :fc, 20818, 1})
+    assert {{:error, :eaddr}, @state} == Model.writes(@state, {80, :fc, 20818, [1, 1]})
   end
 
   test "valid slave, function, address and number of bytes" do

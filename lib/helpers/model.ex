@@ -56,7 +56,7 @@ defmodule Modbus.Model do
         {{:ok, list}, state}
       rescue
         _error ->
-          {{:error, :eaddress}, state}
+          {{:error, :eaddr}, state}
       end
     else
       # different slave id, do nothing.
@@ -73,7 +73,7 @@ defmodule Modbus.Model do
         {{:ok, nil}, Map.put(state, slave, nmap)}
       rescue
         _error ->
-          {{:error, :eaddress}, state}
+          {{:error, :eaddr}, state}
       end
     else
       # different slave id, do nothing.
@@ -96,7 +96,7 @@ defmodule Modbus.Model do
         {{:ok, nil}, Map.put(state, slave, nmap)}
       rescue
         _error ->
-          {{:error, :eaddress}, state}
+          {{:error, :eaddr}, state}
       end
     else
       # different slave id, do nothing.

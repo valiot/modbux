@@ -1,4 +1,7 @@
 defmodule Modbus.Tcp.Server do
+  @moduledoc """
+  TCP Server.
+  """
   alias Modbus.Tcp.Server
   alias Modbus.Model.Shared
   use GenServer, restart: :temporary

@@ -108,7 +108,7 @@ defmodule RtuSlave do
     fc = <<80, 1, 7, 210, 0, 1, 81, 6>>
     UART.write(m_pid, fc)
     # slave
-    assert_receive {:modbus_rtu, {:slave_error, :eaddress, {:rc, 80, 2002, 1}}}
+    assert_receive {:modbus_rtu, {:slave_error, {:rc, 80, 2002, 1}, :eaddr}}
     # master
     assert_receive {:circuits_uart, "tnt0", <<80, 129, 2, 144, 64>>}
 
@@ -116,8 +116,16 @@ defmodule RtuSlave do
     fc = <<80, 11, 7>>
     UART.write(m_pid, fc)
     # slave
-    assert_receive {:modbus_rtu, {:slave_error, :einval, "P\v"}}
+    assert_receive {:modbus_rtu, {:slave_error, "P\v", :einval}}
     # master
     assert_receive {:circuits_uart, "tnt0", <<80, 139, 1, 214, 225>>}
+
+    # Crc
+    fc = <<80, 1, 7, 210, 0, 1, 81, 7>>
+    UART.write(m_pid, fc)
+    # slave
+    assert_receive {:modbus_rtu, {:slave_error, "CRC Error", :ecrc}}
+    # master
+    refute_receive {:circuits_uart, "tnt0", <<80, 129, 2, 144, 64>>}
   end
 end

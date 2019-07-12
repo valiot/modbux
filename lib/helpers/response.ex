@@ -2,6 +2,34 @@ defmodule Modbus.Response do
   @moduledoc false
   alias Modbus.Helper
 
+  # @exceptions %{
+  #   1 => "Illegal function",
+  #   2 => "Illegal data address",
+  #   3 => "Illegal data value",
+  #   4 => "Slave device failure",
+  #   5 => "Acknowledge",
+  #   6 => "Slave device busy",
+  #   7 => "Negative Acknowledge",
+  #   8 => "Memory parity error",
+  #   9 => "Unkown error",
+  #   10 => "Gateway path unavailable",
+  #   11 => "Gateway target device failed to respond",
+  # }
+
+  @exceptions %{
+    1 => :efun,
+    2 => :eaddr,
+    3 => :einval,
+    4 => :edevice,
+    5 => :ack,
+    6 => :sbusy,
+    7 => :nack,
+    8 => :ememp,
+    9 => :error,
+    10 => :egpath,
+    11 => :egtarg
+  }
+
   def pack({:rc, slave, _address, count}, values) do
     ^count = Enum.count(values)
     data = Helper.bitlist_to_bin(values)
@@ -85,8 +113,12 @@ defmodule Modbus.Response do
   end
 
   # error
-  def parse(_cmd, nil) do
-    nil
+  def parse(_cmd, <<_slave, _fc, error_code>>) when error_code in 1..11 do
+    {:error, @exceptions[error_code]}
+  end
+
+  def parse(_cmd, <<slave, _fc, _error_code>>) do
+    {:error, slave, "Unknown error"}
   end
 
   def length({:rc, _slave, _address, count}) do

@@ -116,6 +116,16 @@ defmodule Modbus.Rtu.Master do
     {:reply, res, state}
   end
 
+  def handle_call(:open, _from, %{uart_pid: u_pid, tty: tty, uart_opts: uart_opts} = state) do
+    UART.open(u_pid, tty, [framing: {Framer, behavior: :master}, active: false] ++ uart_opts)
+    {:reply, :ok, state}
+  end
+
+  def handle_call(:close, _from, state) do
+    UART.close(state.uart_pid)
+    {:reply, :ok, state}
+  end
+
   def handle_call({:request, cmd}, _from, state) do
     uart_frame = Rtu.pack_req(cmd)
     Logger.debug("(#{__MODULE__}) Frame: #{inspect(uart_frame <> <<0x00>>)}")

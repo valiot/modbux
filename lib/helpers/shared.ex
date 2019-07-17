@@ -15,15 +15,7 @@ defmodule Modbus.Model.Shared do
   end
 
   def apply(pid, cmd) do
-    Agent.get_and_update(pid, fn model ->
-      case Model.apply(model, cmd) do
-        {new, :error} ->
-          {:error, new}
-
-        {new, values} ->
-          {{:ok, values}, new}
-      end
-    end)
+    Agent.get_and_update(pid, fn model -> Model.apply(model, cmd) end)
   end
 
   defp init(params) do

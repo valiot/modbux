@@ -16,11 +16,14 @@ defmodule Modbus.Mixfile do
   end
 
   def application do
-    []
+    [
+      extra_applications: [:logger]
+    ]
   end
 
   defp deps do
     [
+      {:circuits_uart, "~> 1.3"},
       {:ex_doc, "~> 0.16", only: :dev},
       {:ring_logger, "~> 0.4"}
     ]

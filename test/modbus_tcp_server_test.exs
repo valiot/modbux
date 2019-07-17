@@ -8,7 +8,7 @@ defmodule ModbusTcpServerTest do
   end
 
   test "Server (connection, stop, configuration)" do
-    model = %{80 => %{{:c, 20818} => 0, {:c, 20819} => 1, {:hr, 20817} => 0}}
+    model = %{80 => %{{:c, 20818} => 0, {:c, 20819} => 1, {:hr, 20817} => 0, {:hr, 20818} => 0}}
     {:ok, _spid} = Server.start_link(model: model, port: 2000)
     {:ok, cpid} = Client.start_link(ip: {127, 0, 0, 1}, tcp_port: 3000)
     state_cpid = Client.state(cpid)

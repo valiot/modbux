@@ -4,7 +4,7 @@ defmodule Modbus.Tcp.Server do
   """
   alias Modbus.Tcp.Server
   alias Modbus.Model.Shared
-  use GenServer, restart: :temporary
+  use GenServer, restart: :transient
   require Logger
 
   @port 502

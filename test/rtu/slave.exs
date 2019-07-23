@@ -127,5 +127,11 @@ defmodule RtuSlave do
     assert_receive {:modbus_rtu, {:slave_error, "CRC Error", :ecrc}}
     # master
     refute_receive {:circuits_uart, "tnt0", <<80, 129, 2, 144, 64>>}
+
+    # Slave request function
+    # sets
+    assert Modbus.Rtu.Slave.request(s_pid, {:phr, 80, 1, [1, 0]}) == nil
+    # reads
+    assert Modbus.Rtu.Slave.request(s_pid, {:rhr, 80, 1, 1}) == [1]
   end
 end

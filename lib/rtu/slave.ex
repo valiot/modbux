@@ -32,8 +32,8 @@ defmodule Modbus.Rtu.Slave do
     GenServer.call(pid, :state)
   end
 
-  def update(pid, cmd) do
-    GenServer.call(pid, {:update, cmd})
+  def request(pid, cmd) do
+    GenServer.call(pid, {:request, cmd})
   end
 
   def get_db(pid) do
@@ -73,16 +73,16 @@ defmodule Modbus.Rtu.Slave do
 
   def handle_call(:state, _from, state), do: {:reply, state, state}
 
-  def handle_call({:update, request}, _from, state) do
+  def handle_call({:request, cmd}, _from, state) do
     res =
-      case Shared.apply(state.model_pid, request) do
+      case Shared.apply(state.model_pid, cmd) do
         {:ok, values} ->
-          Logger.debug("(#{__MODULE__}) DB update: #{inspect(request)}, #{inspect(values)}")
-          :ok
+          Logger.debug("(#{__MODULE__}) DB update: #{inspect(cmd)}, #{inspect(values)}")
+          values
 
-        :error ->
-          Logger.debug("(#{__MODULE__}) An error has occur")
-          :error
+        error ->
+          Logger.debug("(#{__MODULE__}) An error has occur #{inspect error}")
+          error
       end
 
     {:reply, res, state}

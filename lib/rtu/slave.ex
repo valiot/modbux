@@ -1,7 +1,9 @@
 defmodule Modbus.Rtu.Slave do
   @moduledoc """
-  RTU Sla device.
+  RTU Slave device.
   """
+  use GenServer, restart: :transient
+
   alias Modbus.Model.Shared
   alias Modbus.Rtu.{Slave, Framer}
   alias Modbus.Rtu

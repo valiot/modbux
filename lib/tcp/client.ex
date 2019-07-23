@@ -1,7 +1,7 @@
 defmodule Modbus.Tcp.Client do
   alias Modbus.Tcp.Client
   alias Modbus.Tcp
-  use GenServer
+  use GenServer, restart: :transient
   @timeout 2000
   @port 502
   @ip {0, 0, 0, 0}

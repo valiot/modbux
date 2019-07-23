@@ -2,6 +2,8 @@ defmodule Modbus.Rtu.Master do
   @moduledoc """
   RTU Master device.
   """
+  use GenServer, restart: :transient
+
   alias Modbus.Rtu.{Master, Framer}
   alias Modbus.Rtu
   alias Circuits.UART

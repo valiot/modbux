@@ -67,11 +67,11 @@ defmodule Modbus.Tcp.Server do
       case Shared.apply(state.model_pid, request) do
         {:ok, values} ->
           Logger.debug("(#{__MODULE__}) DB update: #{inspect(request)}, #{inspect(values)}")
-          :ok
+          values
 
-        :error ->
-          Logger.debug("(#{__MODULE__}) an error has occur")
-          :error
+        error ->
+          Logger.debug("(#{__MODULE__}) An error has occur")
+          error
       end
 
     {:reply, res, state}

@@ -77,8 +77,11 @@ defmodule Modbus.Rtu.Slave do
     res =
       case Shared.apply(state.model_pid, cmd) do
         {:ok, values} ->
-          Logger.debug("(#{__MODULE__}) DB update: #{inspect(cmd)}, #{inspect(values)}")
+          Logger.debug("(#{__MODULE__}) DB request: #{inspect(cmd)}, #{inspect(values)}")
           values
+
+        nil ->
+          Logger.debug("(#{__MODULE__}) DB update: #{inspect(cmd)}")
 
         error ->
           Logger.debug("(#{__MODULE__}) An error has occur #{inspect error}")

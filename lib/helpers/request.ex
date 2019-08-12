@@ -1,7 +1,11 @@
-defmodule Modbus.Request do
-  @moduledoc false
-  alias Modbus.Helper
+defmodule Modbux.Request do
+  @moduledoc """
+  Request helper, functions that handles Client & Master request messages.
+  """
+  alias Modbux.Helper
 
+  @spec pack({:fc | :phr | :rc | :rhr | :ri | :rir, integer, integer, maybe_improper_list | integer}) ::
+          <<_::48, _::_*8>>
   def pack({:rc, slave, address, count}) do
     reads(:d, slave, 1, address, count)
   end
@@ -34,6 +38,8 @@ defmodule Modbus.Request do
     writes(:a, slave, 16, address, values)
   end
 
+  @spec parse(<<_::24, _::_*8>>) ::
+          {:einval | :error | :fc | :phr | :rc | :rhr | :ri | :rir, byte, char, [any] | char}
   def parse(<<slave, 1, address::16, count::16>>) do
     {:rc, slave, address, count}
   end
@@ -75,7 +81,7 @@ defmodule Modbus.Request do
     {:phr, slave, address, values}
   end
 
-  # exceptions
+  # Exceptions clauses
   def parse(<<slave, fc, error_code, _b_tail::binary>>) when fc in 129..144 do
     {:error, slave, fc, error_code}
   end
@@ -84,6 +90,7 @@ defmodule Modbus.Request do
     {:einval, slave, fc, error_code}
   end
 
+  @spec length({:fc | :phr | :rc | :rhr | :ri | :rir, any, any, any}) :: integer
   def length({:rc, _slave, _address, _count}) do
     6
   end

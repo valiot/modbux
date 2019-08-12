@@ -10,7 +10,7 @@ defmodule RtuSlave do
     # RingLogger.attach()
     {:ok, m_pid} = UART.start_link()
 
-    UART.open(m_pid, "tnt0", speed: 115_200, framing: {Modbus.Rtu.Framer, behavior: :master})
+    UART.open(m_pid, "tnt0", speed: 115_200, framing: {Modbux.Rtu.Framer, behavior: :master})
 
     model = %{
       80 => %{
@@ -25,7 +25,7 @@ defmodule RtuSlave do
       }
     }
 
-    {:ok, s_pid} = Modbus.Rtu.Slave.start_link(tty: "tnt1", model: model, active: true)
+    {:ok, s_pid} = Modbux.Rtu.Slave.start_link(tty: "tnt1", model: model, active: true)
 
     # Master Requests.
     # Read Coil Status (FC=01)
@@ -67,7 +67,7 @@ defmodule RtuSlave do
     assert_receive {:modbus_rtu, {:slave_request, {:fc, 80, 1, 0}}}
     # master
     assert_receive {:circuits_uart, "tnt0", <<80, 5, 0, 1, 0, 0, 145, 139>>}
-    assert Modbus.Rtu.Slave.get_db(s_pid)[80][{:c, 1}] == 0
+    assert Modbux.Rtu.Slave.get_db(s_pid)[80][{:c, 1}] == 0
 
     # Preset Single Register (FC=06)
     fc = <<80, 6, 0, 1, 0, 0, 213, 139>>
@@ -76,7 +76,7 @@ defmodule RtuSlave do
     assert_receive {:modbus_rtu, {:slave_request, {:phr, 80, 1, 0}}}
     # master
     assert_receive {:circuits_uart, "tnt0", <<80, 6, 0, 1, 0, 0, 213, 139>>}
-    assert Modbus.Rtu.Slave.get_db(s_pid)[80][{:hr, 1}] == 0
+    assert Modbux.Rtu.Slave.get_db(s_pid)[80][{:hr, 1}] == 0
 
     # # Force Multiple Coils (FC=15)
     fc = <<80, 15, 0, 1, 0, 2, 1, 2, 166, 102>>
@@ -85,8 +85,8 @@ defmodule RtuSlave do
     assert_receive {:modbus_rtu, {:slave_request, {:fc, 80, 1, [0, 1]}}}
     # master
     assert_receive {:circuits_uart, "tnt0", <<80, 15, 0, 1, 0, 2, 136, 75>>}
-    assert Modbus.Rtu.Slave.get_db(s_pid)[80][{:c, 1}] == 0
-    assert Modbus.Rtu.Slave.get_db(s_pid)[80][{:c, 2}] == 1
+    assert Modbux.Rtu.Slave.get_db(s_pid)[80][{:c, 1}] == 0
+    assert Modbux.Rtu.Slave.get_db(s_pid)[80][{:c, 2}] == 1
 
     # Preset Multiple Registers (FC=16)
     fc = <<80, 16, 0, 1, 0, 2, 4, 0, 0, 0, 1, 246, 94>>
@@ -95,8 +95,8 @@ defmodule RtuSlave do
     assert_receive {:modbus_rtu, {:slave_request, {:phr, 80, 1, [0, 1]}}}
     # master
     assert_receive {:circuits_uart, "tnt0", <<80, 16, 0, 1, 0, 2, 29, 137>>}
-    assert Modbus.Rtu.Slave.get_db(s_pid)[80][{:hr, 1}] == 0
-    assert Modbus.Rtu.Slave.get_db(s_pid)[80][{:hr, 2}] == 1
+    assert Modbux.Rtu.Slave.get_db(s_pid)[80][{:hr, 1}] == 0
+    assert Modbux.Rtu.Slave.get_db(s_pid)[80][{:hr, 2}] == 1
 
     # Exception in bus from other slaves
     excep = <<0x0A, 0x81, 0x02, 0xB0, 0x53>>
@@ -130,8 +130,8 @@ defmodule RtuSlave do
 
     # Slave request function
     # sets
-    assert Modbus.Rtu.Slave.request(s_pid, {:phr, 80, 1, [1, 0]}) == nil
+    assert Modbux.Rtu.Slave.request(s_pid, {:phr, 80, 1, [1, 0]}) == nil
     # reads
-    assert Modbus.Rtu.Slave.request(s_pid, {:rhr, 80, 1, 1}) == [1]
+    assert Modbux.Rtu.Slave.request(s_pid, {:rhr, 80, 1, 1}) == [1]
   end
 end

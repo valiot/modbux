@@ -1,9 +1,9 @@
-defmodule Modbus.Tcp.Server do
+defmodule Modbux.Tcp.Server do
   @moduledoc """
-  TCP Server.
+  API for Modbus TCP Server.
   """
-  alias Modbus.Tcp.Server
-  alias Modbus.Model.Shared
+  alias Modbux.Tcp.Server
+  alias Modbux.Model.Shared
   use GenServer, restart: :transient
   require Logger
 
@@ -19,18 +19,88 @@ defmodule Modbus.Tcp.Server do
             sup_pid: nil,
             acceptor_pid: nil
 
+  @doc """
+  Starts a Modbus TCP Server process.
+
+  The following options are available:
+
+    * `port` - is the Modbux TCP Server tcp port number.
+    * `timeout` - is the connection timeout.
+    * `model` - defines the DB initial state.
+    * `sup_otps` - server supervisor OTP options.
+    * `active` - (`true` or `false`) enable/disable DB updates notifications (mailbox).
+
+  The messages (when active mode is true) have the following form:
+
+    `{:modbus_tcp, {:slave_request, payload}}`
+
+  ## Model (DB)
+
+  The model or data base (DB) defines the server memory map, the DB is defined by the following syntax:
+  ```elixir
+  %{slave_id => %{{memory_type, address_number} => value}}
+  ```
+  where:
+    * `slave_id` - specifies a unique unit address from 1 to 247.
+    * `memory_type` - specifies the memory between:
+         * `:c` - Discrete Output Coils.
+         * `:i` - Discrete Input Contacts.
+         * `:ir` - Analog Input Registers.
+         * `:hr` - Analog Output Registers.
+    * `address_number` - specifies the memory address.
+    * `value` - the current value from that memory.
+
+  ## Example
+
+  ```elixir
+  model = %{80 => %{{:c, 20818} => 0, {:hr, 20818} => 0}}
+  Modbux.Tcp.Server.start_link(model: model, port: 2000)
+  ```
+  """
+  @spec start_link(any, [
+          {:debug, [:log | :statistics | :trace | {any, any}]}
+          | {:hibernate_after, :infinity | non_neg_integer}
+          | {:name, atom | {:global, any} | {:via, atom, any}}
+          | {:spawn_opt,
+             :link
+             | :monitor
+             | {:fullsweep_after, non_neg_integer}
+             | {:min_bin_vheap_size, non_neg_integer}
+             | {:min_heap_size, non_neg_integer}
+             | {:priority, :high | :low | :normal}}
+          | {:timeout, :infinity | non_neg_integer}
+        ]) :: :ignore | {:error, any} | {:ok, pid}
   def start_link(params, opts \\ []) do
     GenServer.start_link(__MODULE__, {params, self()}, opts)
   end
 
+  @spec stop(atom | pid | {atom, any} | {:via, atom, any}) :: :ok
   def stop(pid) do
     GenServer.stop(pid)
   end
 
+  @doc """
+  Updates the state of the Server DB.
+
+  `cmd` is a 4 elements tuple, as follows:
+    - `{:rc, slave, address, count}` read `count` coils.
+    - `{:ri, slave, address, count}` read `count` inputs.
+    - `{:rhr, slave, address, count}` read `count` holding registers.
+    - `{:rir, slave, address, count}` read `count` input registers.
+    - `{:fc, slave, address, value}` force single coil.
+    - `{:phr, slave, address, value}` preset single holding register.
+    - `{:fc, slave, address, values}` force multiple coils.
+    - `{:phr, slave, address, values}` preset multiple holding registers.
+  """
+  @spec update(atom | pid | {atom, any} | {:via, atom, any}, any) :: any
   def update(pid, cmd) do
     GenServer.call(pid, {:update, cmd})
   end
 
+  @doc """
+  Gets the current state of the Server DB.
+  """
+  @spec get_db(atom | pid | {atom, any} | {:via, atom, any}) :: any
   def get_db(pid) do
     GenServer.call(pid, :get_db)
   end

@@ -1,5 +1,7 @@
-defmodule Modbus.Model do
-  @moduledoc false
+defmodule Modbux.Model do
+  @moduledoc """
+  Model helper, functions to write and read the Slave/Server DB.
+  """
   require Logger
 
   def apply(state, {:rc, slave, address, count}) do
@@ -40,8 +42,7 @@ defmodule Modbus.Model do
     {nil, state}
   end
 
-  # Modify the slave/server
-  # returns: :ok, {:ok,values}, {:error, reason}, nil
+  @spec reads(map, {any, any, any, any}) :: {nil | {:error, :eaddr} | {:ok, [any]}, map}
   def reads(state, {slave, type, address, count}) do
     # checks the slave_ids
     if Map.has_key?(state, slave) do
@@ -59,11 +60,12 @@ defmodule Modbus.Model do
           {{:error, :eaddr}, state}
       end
     else
-      # different slave id, do nothing.
+      # is a different slave id, do nothing.
       {nil, state}
     end
   end
 
+  @spec write(map, {any, any, any, any}) :: {nil | {:error, :eaddr} | {:ok, nil}, map}
   def write(state, {slave, type, address, value}) do
     # checks the slave_ids
     if Map.has_key?(state, slave) do
@@ -76,7 +78,7 @@ defmodule Modbus.Model do
           {{:error, :eaddr}, state}
       end
     else
-      # different slave id, do nothing.
+      # is a different slave id, do nothing.
       {nil, state}
     end
   end
@@ -99,7 +101,7 @@ defmodule Modbus.Model do
           {{:error, :eaddr}, state}
       end
     else
-      # different slave id, do nothing.
+      # is a different slave id, do nothing.
       {nil, state}
     end
   end

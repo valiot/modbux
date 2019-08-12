@@ -1,7 +1,10 @@
-defmodule Modbus.Tcp.Server.Handler do
-  alias Modbus.Tcp.Server.Handler
-  alias Modbus.Model.Shared
-  alias Modbus.Tcp
+defmodule Modbux.Tcp.Server.Handler do
+  @moduledoc """
+  A worker for each Modbus Client, handles Client requests.
+  """
+  alias Modbux.Tcp.Server.Handler
+  alias Modbux.Model.Shared
+  alias Modbux.Tcp
   use GenServer, restart: :temporary
   require Logger
 
@@ -9,6 +12,7 @@ defmodule Modbus.Tcp.Server.Handler do
             parent_pid: nil,
             socket: nil
 
+  @spec start_link([...]) :: :ignore | {:error, any} | {:ok, pid}
   def start_link([socket, model_pid, parent_pid]) do
     GenServer.start_link(__MODULE__, [socket, model_pid, parent_pid])
   end
@@ -20,7 +24,7 @@ defmodule Modbus.Tcp.Server.Handler do
   def handle_info({:tcp, socket, data}, state) do
     Logger.debug("(#{__MODULE__}) Received: #{data} ")
     {cmd, transid} = Tcp.parse_req(data)
-    Logger.debug("(#{__MODULE__}) Received Modbus request: #{inspect({cmd, transid})}")
+    Logger.debug("(#{__MODULE__}) Received Modbux request: #{inspect({cmd, transid})}")
 
     case Shared.apply(state.model_pid, cmd) do
       {:ok, values} ->

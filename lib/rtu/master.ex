@@ -1,11 +1,11 @@
-defmodule Modbus.Rtu.Master do
+defmodule Modbux.Rtu.Master do
   @moduledoc """
-  RTU Master device.
+  API for a Modbus RTU Master device.
   """
   use GenServer, restart: :transient
 
-  alias Modbus.Rtu.{Master, Framer}
-  alias Modbus.Rtu
+  alias Modbux.Rtu.{Master, Framer}
+  alias Modbux.Rtu
   alias Circuits.UART
   require Logger
 
@@ -20,6 +20,39 @@ defmodule Modbus.Rtu.Master do
             uart_pid: nil,
             parent_pid: nil
 
+  @doc """
+  Starts a Modbus RTU Master process.
+
+  The following options are available:
+
+    * `tty` - defines the serial port to spawn the Master.
+    * `timeout` - defines slave timeout.
+    * `active` - (`true` or `false`) specifies whether data is received as
+        messages (mailbox) or by calling `request/2`.
+    * `gen_opts` - defines extra options for the Genserver OTP configuration.
+    * `uart_opts` - defines extra options for the UART configuration (defaults:
+          [speed: 115200, rx_framing_timeout: 1000]).
+
+  The messages (when active mode is true) have the following form:
+
+    `{:modbus_rtu, {:slave_response, cmd, values}}`
+  or
+
+    `{:modbus_rtu, {:slave_error, payload, reason}}`
+
+  The following are some reasons:
+
+    * `:ecrc`  - corrupted message (invalid crc).
+    * `:einval`  - invalid function.
+    * `:eaddr`  - invalid memory address requested.
+
+  ## Example
+
+  ```elixir
+  Modbux.Rtu.Master.start_link(tty: "tnt0", active: true, uart_opts: [speed: 9600])
+  ```
+  """
+  @spec start_link(keyword) :: :ignore | {:error, any} | {:ok, pid}
   def start_link(params) do
     gen_opts = Keyword.get(params, :gen_opts, [])
     GenServer.start_link(__MODULE__, {params, self()}, gen_opts)
@@ -31,53 +64,66 @@ defmodule Modbus.Rtu.Master do
   end
 
   @doc """
-  Gets the state of the Master.
+  Gets the Master state.
   """
   def state(pid) do
     GenServer.call(pid, :state)
   end
 
   @doc """
-  Configure the Master serial port (`status` must be `:closed`).
+  Configure the Master serial port.
+
+  The following options are available:
+
+    * `tty` - defines the serial port to spawn the Master.
+    * `timeout` - defines slave timeout.
+    * `active` - (`true` or `false`) specifies whether data is received as
+        messages (mailbox) or by calling `request/2`.
+    * `gen_opts` - defines extra options for the Genserver OTP configuration.
+    * `uart_opts` - defines extra options for the UART configuration.
+
   """
   def configure(pid, params) do
     GenServer.call(pid, {:configure, {params, self()}})
   end
 
   @doc """
-  open Master serial port.
+  Open the Master serial port.
   """
   def open(pid) do
     GenServer.call(pid, :open)
   end
 
   @doc """
-  Close the serial port of the Master.
+  Close the Master serial port.
   """
   def close(pid) do
     GenServer.call(pid, :close)
   end
 
   @doc """
-  send a request to Modbus RTU Slave.
+  Send a request to Modbus RTU Slave.
 
   `cmd` is one of:
-  - `{:rc, slave, address, count}` read `count` coils.
-  - `{:ri, slave, address, count}` read `count` inputs.
-  - `{:rhr, slave, address, count}` read `count` holding registers.
-  - `{:rir, slave, address, count}` read `count` input registers.
-  - `{:fc, slave, address, value}` force single coil.
-  - `{:phr, slave, address, value}` preset single holding register.
-  - `{:fc, slave, address, values}` force multiple coils.
-  - `{:phr, slave, address, values}` preset multiple holding registers.
+    - `{:rc, slave, address, count}` read `count` coils.
+    - `{:ri, slave, address, count}` read `count` inputs.
+    - `{:rhr, slave, address, count}` read `count` holding registers.
+    - `{:rir, slave, address, count}` read `count` input registers.
+    - `{:fc, slave, address, value}` force single coil.
+    - `{:phr, slave, address, value}` preset single holding register.
+    - `{:fc, slave, address, values}` force multiple coils.
+    - `{:phr, slave, address, values}` preset multiple holding registers.
   """
-
   @spec request(atom | pid | {atom, any} | {:via, atom, any}, tuple()) ::
           :ok | {:ok, list()} | {:error, String.t()}
   def request(pid, cmd) do
     GenServer.call(pid, {:request, cmd})
   end
 
+  @doc """
+  Read and parse the last request (if the last request timeouts).
+  """
+  @spec read(atom | pid | {atom, any} | {:via, atom, any}) :: any
   def read(pid) do
     GenServer.call(pid, :read)
   end
@@ -94,7 +140,7 @@ defmodule Modbus.Rtu.Master do
     parent_pid = if active, do: parent_pid
     timeout = Keyword.get(params, :timeout, @timeout)
     tty = Keyword.fetch!(params, :tty)
-    Logger.debug("(#{__MODULE__}) Starting Modbus Master at \"#{tty}\"")
+    Logger.debug("(#{__MODULE__}) Starting Modbux Master at \"#{tty}\"")
     uart_opts = Keyword.get(params, :uart_otps, speed: @speed, rx_framing_timeout: @timeout)
     {:ok, u_pid} = UART.start_link()
     UART.open(u_pid, tty, [framing: {Framer, behavior: :master}, active: false] ++ uart_opts)
@@ -151,7 +197,7 @@ defmodule Modbus.Rtu.Master do
     timeout = Keyword.get(params, :timeout, state.timeout)
     tty = Keyword.get(params, :tty, state.tty)
     uart_opts = Keyword.get(params, :uart_otps, state.uart_opts)
-    Logger.debug("(#{__MODULE__}) Starting Modbus Master at \"#{tty}\"")
+    Logger.debug("(#{__MODULE__}) Starting Modbux Master at \"#{tty}\"")
 
     UART.close(state.uart_pid)
     UART.stop(state.uart_pid)

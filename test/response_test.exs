@@ -1,6 +1,6 @@
 defmodule ResponseTest do
   use ExUnit.Case
-  alias Modbus.Response
+  alias Modbux.Response
 
   test "Response pack and parse test" do
     pp(<<0x22, 0x01, 0x01, 0x00>>, {:rc, 0x22, 0x2324, 1}, [0])

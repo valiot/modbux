@@ -2,13 +2,13 @@ ExUnit.start()
 
 defmodule TestHelper do
   use ExUnit.Case
-  alias Modbus.Request
-  alias Modbus.Response
-  alias Modbus.Model
-  alias Modbus.Rtu
-  alias Modbus.Tcp
-  alias Modbus.Tcp.Client
-  alias Modbus.Tcp.Server
+  alias Modbux.Request
+  alias Modbux.Response
+  alias Modbux.Model
+  alias Modbux.Rtu
+  alias Modbux.Tcp
+  alias Modbux.Tcp.Client
+  alias Modbux.Tcp.Server
 
   def pp1(cmd, req, res, val, model) do
     assert req == Request.pack(cmd)

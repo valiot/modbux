@@ -1,157 +1,313 @@
-# modbus
+<br>
+<div align="center">
+  <img src="assets/valiot-logo-blue.png" alt="Valiot Logo" width="192" height="57" />
+</div>
+<br>  
 
-Modbus library with TCP Master & Slave implementation.
+# Modbux
 
-For Serial RTU see [baud](https://github.com/samuelventura/baud).
+Modbux is a library for network and serial Modbus communications. 
+
+This library currently supports behaviors for TCP (Client & Server) and RTU (Master & Slave) protocols.
+
+## Index
+
+* [Features](#features)
+
+* [Installation](#installation)
+
+* [Usage](#usage)
+    * [Modbus RTU](#Slave)
+    * [Modbus TCP](#Server)
+    * [Helpers](#Helpers)
+
+* [Documentation](#documentation)
+
+* [Contributing](#contributing)
+
+* [License](#License)
+
+* [TODO](#todo)
+
+## Features
+
+The following list is the current supported protocols/behaviors and helpers:
+
+- Modbus RTU:
+  - Master
+  - Slave
+  - Framer
+
+- Modbus TCP:
+  - Client
+  - Server
+
+- Helpers:
+  - IEEE754 Float support
+  - Endianess
+
+
+## Installation
+
+The package can be installed by adding `modbux` to your list of dependencies in `mix.exs`:
+
+```elixir
+def deps do
+  [
+    {:modbux, "~> 0.1.0"}
+  ]
+end
+```
+
+## Usage
+***
+### Modbus RTU
+
+Modbus RTU is an open serial protocol derived from the Master/Slave architecture originally developed by Modicon. This protocol primarily uses an RS-232 or RS-485 serial interfaces for communications.
+
+#### Slave
+
+To start a Modbus RTU Slave process use `start_link/1`.
+
+The following options are available:
+- `tty` - defines the serial port to spawn the Slave.
+- `gen_opts` - defines extra options for the Genserver OTP configuration.
+- `uart_opts` - defines extra options for the UART configuration.
+- `model` - defines the DB initial state.
+- `active` - (`true` or `false`) enable/disable DB updates notifications (mailbox).
+
+The messages (when active mode is `true`) have the following form:
+```elixir
+  {:modbus_rtu, {:slave_request, payload}}
+```
+or
+
+```elixir
+  {:modbus_rtu, {:slave_error, payload, reason}}
+```
+
+The following are some reasons:
+
+* `:ecrc`  - corrupted message (invalid crc).
+* `:einval`  - invalid function.
+* `:eaddr`  - invalid memory address requested.
+
+#### Model (DB)
+
+The model or data base (DB) defines the slave/server memory map, the DB is defined by the following syntax:
+```elixir
+%{slave_id => %{{memory_type, address_number} => value}}
+```
+where:
+* `slave_id` - specifies a unique unit address from 1 to 247.
+* `memory_type` - specifies the memory between:
+    * `:c` - Discrete Output Coils.
+    * `:i` - Discrete Input Contacts.
+    * `:ir` - Analog Input Registers.
+    * `:hr` - Analog Output Registers.
+* `address_number` - specifies the memory address.
+* `value` - the current value from that memory.
+
+### Example
+```elixir
+# DB inital state
+model = %{
+    80 => %{
+      {:c, 1} => 1,
+      {:c, 2} => 0,
+      {:i, 1} => 1,
+      {:i, 2} => 1,
+      {:ir, 1} => 0,
+      {:ir, 2} => 1,
+      {:hr, 1} => 102,
+      {:hr, 2} => 103
+    }
+  }
+# Starts the Slave at "ttyUSB0"
+{:ok, s_pid} = Modbux.Rtu.Slave.start_link(tty: "ttyUSB0", model: model, active: true)
+```
+if needed, the Slave DB can be modified in runtime with elixir code by using `request/2`,
+a `cmd` must be used to update the DB, the `cmd` is a 4 elements tuple, as follows:
+  - `{:rc, slave, address, count}` read `count` coils.
+  - `{:ri, slave, address, count}` read `count` inputs.
+  - `{:rhr, slave, address, count}` read `count` holding registers.
+  - `{:rir, slave, address, count}` read `count` input registers.
+  - `{:fc, slave, address, value}` force single coil.
+  - `{:phr, slave, address, value}` preset single holding register.
+  - `{:fc, slave, address, values}` force multiple coils.
+  - `{:phr, slave, address, values}` preset multiple holding registers.
+
+#### Master
+
+To start a Modbus RTU Master process use `start_link/1`.
+
+The following options are available:
+
+  * `tty` - defines the serial port to spawn the Master.
+  * `timeout` - defines slave timeout.
+  * `active` - (`true` or `false`) specifies whether data is received as
+      messages (mailbox) or by calling `request/2`.
+  * `gen_opts` - defines extra options for the Genserver OTP configuration.
+  * `uart_opts` - defines extra options for the UART configuration (defaults:
+        [speed: 115200, rx_framing_timeout: 1000]).
+
+The messages (when active mode is true) have the following form:
+```elixir
+  {:modbus_rtu, {:slave_response, cmd, values}}
+```
+or
+```elixir
+  {:modbus_rtu, {:slave_error, payload, reason}}
+```
+The following are some reasons:
+
+  * `:ecrc`  - corrupted message (invalid crc).
+  * `:einval`  - invalid function.
+  * `:eaddr`  - invalid memory address requested.
+
+use `request/2` to send a `cmd` (command) to a Modbus RTU Slave.
+
+### Example
+
+```elixir
+# Starts the Master at "ttyUSB1" (in the example is connected to ttyUSB1)
+{:ok, m_pid} = Modbux.Rtu.Master.start_link(tty: "ttyUSB1")
+# Read 2 holding registers at 1 (memory address) from the slave 80
+resp = Modbux.Rtu.Master.request(m_pid, {:rhr, 80, 1, 2})
+# resp == {:ok, [102, 103]}
+```
+
+### Modbux TCP
+
+Modbus TCP (also Modbus TCP/IP) is simply the Modbus RTU protocol with a TCP interface that runs on a network.
+
+#### Server
+
+To start a Modbus TCP Server process use `start_link/1`.
+
+The following options are available:
+
+  * `port` - is the Modbux TCP Server tcp port number.
+  * `timeout` - is the connection timeout.
+  * `model` - defines the DB initial state.
+  * `sup_otps` - server supervisor OTP options.
+  * `active` - (`true` or `false`) enable/disable DB updates notifications (mailbox).
+
+The messages (when active mode is true) have the following form:
+```elixir
+  {:modbus_tcp, {:slave_request, payload}}
+```
+
+### Example
+
+```elixir
+# DB initial state
+model = %{80 => %{{:c, 20818} => 0, {:hr, 20818} => 0}}
+# Starts the Server at tcp port: 2000
+Modbux.Tcp.Server.start_link(model: model, port: 2000)
+```
+
+#### Client 
+
+To start a Modbus TCP Client process use `start_link/1`.
+
+The following options are available:
+
+  * `ip` - is the internet address of the desired Modbux TCP Server.
+  * `tcp_port` - is the desired Modbux TCP Server tcp port number.
+  * `timeout` - is the connection timeout.
+  * `active` - (`true` or `false`) specifies whether data is received as
+      messages (mailbox) or by calling `confirmation/1` each time `request/2` is called.
+
+The messages (when active mode is true) have the following form:
+
+```elixir
+  {:modbus_tcp, cmd, values}
+```
+
+to connect to a Modbus TCP Server `connect/1`.
+
+Use `request/2` to send a `cmd` (command) to a Modbus TCP Server and `confirmation/1` to parse the server response.
+
+### Example
+
+```elixir
+# Starts the Client that will connect to a Server with tcp port: 2000
+{:ok, cpid} = Modbux.Tcp.Client.start_link(ip: {127,0,0,1}, port: 2000, timeout: 2000, active: true)
+# Connect to the Server
+Modbux.Tcp.Client.connect(cpid)
+# Read 1 coil at 20818 from the device 80
+Modbux.Tcp.Client.request(cpid, {:rc, 0x50, 20818, 1})
+# Parse the Server response
+resp = Modbux.Tcp.Client.confirmation(cpid) 
+# resp == {:ok, [0]}
+```
+
+
+### Helpers
+
+#### IEEE754 Float
+
+Several modbus register use IEEE754 float format, therefore this library also provides functions to encode and decode data.
+
+### Example
+
+```elixir
+  # Encode
+  +5.0 = Modbux.IEEE754.from_2_regs(0x40a0, 0x0000, :be)
+  [-5.0, +5.0] = Modbux.IEEE754.from_2n_regs([0xc0a0, 0x0000, 0x40a0, 0x0000], :be)
+  # Decode
+  [0xc0a0, 0x0000] = Modbux.IEEE754.to_2_regs(-5.0)
+  [0xc0a0, 0x0000, 0x40a0, 0x0000] = Modbux.IEEE754.to_2n_regs([-5.0, +5.0])
+```
+
+Based on https://www.h-schmidt.net/FloatConverter/IEEE754.html.
+
+#### Endianess
+
+Depending on the device / server the data can be encoded with different types of endianess, therefore this library also provides functions to encode data.
+
+### Example
+
+```elixir
+  # Encode
+  2.3183081793789774e-41 = Modbux.IEEE754.from_2_regs(0x40a0, 0x0000, :le)
+  [6.910082987278538e-41, 2.3183081793789774e-41] = Modbux.IEEE754.from_2n_regs([0xc0a0, 0x0000, 0x40a0, 0x0000], :le)
+```
+
+
+Good to know:
+- [Erlang default endianess is BIG](http://erlang.org/doc/programming_examples/bit_syntax.html#Defaults)
+- [MODBUS default endianess is BIG (p.34)](http://modbus.org/docs/PI_MBUS_300.pdf)
+- [MODBUS CRC endianess is LITTLE (p.16)](http://modbus.org/docs/PI_MBUS_300.pdf)
+
+
+## Documentation
+The docs can be found at [https://hexdocs.pm/modbux](https://hexdocs.pm/modbux).
 
 Based on:
 
 - http://modbus.org/docs/PI_MBUS_300.pdf
-- http://modbus.org/docs/Modbus_Messaging_Implementation_Guide_V1_0b.pdf
-- http://modbus.org/docs/Modbus_over_serial_line_V1_02.pdf
+- http://modbus.org/docs/Modbux_Messaging_Implementation_Guide_V1_0b.pdf
+- http://modbus.org/docs/Modbux_over_serial_line_V1_02.pdf
+- http://www.simplymodbus.ca/index.html
 
-## Installation and Usage
+## Contributing
+  * Fork our repository on github.
+  * Fix or add what is needed.
+  * Commit to your repository.
+  * Issue a github pull request (fill the PR template).
 
-1. Add `modbus` to your list of dependencies in `mix.exs`:
+## License
+  See [LICENSE](./LICENSE).
 
-  ```elixir
-  def deps do
-    [{:modbus, "~> 0.3.7"}]
-  end
-  ```
+## TODO
+  * Add Modbux ASCII.
+  * Add Modbux UDP.
+  * Add more examples.
+  * Improve error handling.
 
-2. Use as TCP master:
 
-  ```elixir
-  #run with: mix opto22
-  alias Modbus.Tcp.Master
 
-  # opto22 rack configured as follows
-  # m0 - 4p digital input
-  #  p0 - 24V
-  #  p1 - 0V
-  #  p2 - m1.p2
-  #  p3 - m1.p3
-  # m1 - 4p digital output
-  #  p0 - NC
-  #  p1 - NC
-  #  p2 - m0.p2
-  #  p3 - m0.p3
-  # m2 - 2p analog input (-10V to +10V)
-  #  p0 - m3.p0
-  #  p1 - m3.p1
-  # m3 - 2p analog output (-10V to +10V)
-  #  p0 - m2.p0
-  #  p1 - m2.p1
 
-  {:ok, pid} = Master.start_link([ip: {10,77,0,2}, port: 502])
 
-  #turn off m1.p0
-  :ok = Master.exec(pid, {:fc, 1, 4, 0})
-  #turn on m1.p1
-  :ok = Master.exec(pid, {:fc, 1, 5, 1})
-  #alternate m1.p2 and m1.p3
-  :ok = Master.exec(pid, {:fc, 1, 6, [1, 0]})
-
-  #https://www.h-schmidt.net/FloatConverter/IEEE754.html
-  #write -5V (IEEE 754 float) to m3.p0
-  #<<-5::float-32>> -> <<192, 160, 0, 0>>
-  :ok = Master.exec(pid, {:phr, 1, 24, [0xc0a0, 0x0000]})
-  :ok = Master.exec(pid, {:phr, 1, 24, Modbus.IEEE754.to_2_regs(-5.0, :be)})
-  #write +5V (IEEE 754 float) to m3.p1
-  #<<+5::float-32>> -> <<64, 160, 0, 0>>
-  :ok = Master.exec(pid, {:phr, 1, 26, [0x40a0, 0x0000]})
-  :ok = Master.exec(pid, {:phr, 1, 26, Modbus.IEEE754.to_2_regs(+5.0, :be)})
-
-  :timer.sleep(20) #outputs settle delay
-
-  #read previous coils as inputs
-  {:ok, [0, 1, 1, 0]} = Master.exec(pid, {:ri, 1, 4, 4})
-
-  #read previous analog channels as input registers
-  {:ok, [0xc0a0, 0x0000, 0x40a0, 0x0000]} = Master.exec(pid, {:rir, 1, 24, 4})
-  {:ok, data} = Master.exec(pid, {:rir, 1, 24, 4})
-  [-5.0, +5.0] = Modbus.IEEE754.from_2n_regs(data, :be)
-  ```
-
-3. Use as TCP slave:
-
-  ```elixir
-  #run with: mix slave
-  alias Modbus.Tcp.Slave
-  alias Modbus.Tcp.Master
-
-  #start your slave with a shared model
-  model = %{ 0x50=>%{ {:c, 0x5152}=>0 } }
-  {:ok, spid} = Slave.start_link([model: model])
-  #get the assigned tcp port
-  {:ok, %{port: port}} = Slave.id(spid)
-
-  #interact with it
-  {:ok, mpid} = Master.start_link([ip: {127,0,0,1}, port: port])
-  {:ok, [0]} = Master.exec(mpid, {:rc, 0x50, 0x5152, 1})
-  ...
-  ```
-
-## Endianess
-
-- [Erlang default endianess is BIG](http://erlang.org/doc/programming_examples/bit_syntax.html#Defaults)
-- [MODBUS default endianess is BIG (p.34)](http://modbus.org/docs/PI_MBUS_300.pdf)
-- [MODBUS CRC endianess is LITTLE (p.16)](http://modbus.org/docs/PI_MBUS_300.pdf)
-- [Opto22 FLOAT endianess is BIG (p.27)](http://www.opto22.com/documents/1678_Modbus_TCP_Protocol_Guide.pdf)
-
-## Roadmap
-
-Future
-
-- [ ] Improve documentation and samples
-- [ ] Improve error handling
-
-Version 0.3.7
-
-- [x] Changed little endian flag from :se to :le
-
-Version 0.3.6
-
-- [x] Added endianness flag to float helpers
-
-Version 0.3.5
-
-- [x] Added float helper
-
-Version 0.3.4
-
-- [x] Fixed RTU CRC endianess
-
-Version 0.3.3
-
-- [x] Shared model slave implementation
-
-Version 0.3.2
-
-- [x] Added request length prediction
-- [x] Refactored namespaces to avoid baud clash
-- [x] Tcp master api updated to match baud rtu master api
-
-Version 0.3.1
-
-- [x] Added master/slave test for each code
-- [x] Added response length prediction
-- [x] Added a couple of helpers to tcp and rtu api
-- [x] A reference-only tcp slave added in test helper
-
-Version 0.3.0
-
-- [x] Modbus TCP slave: wont fix, to be implemented as forward plugin
-- [x] API breaking changes
-
-Version 0.2.0
-
-- [x] Updated documentation
-- [x] Renamed commands to match spec wording
-
-Version 0.1.0
-
-- [x] Modbus TCP master
-- [x] Request/response packet builder and parser
-- [x] Device model to emulate slave interaction

@@ -1,7 +1,7 @@
-defmodule ModbusTcpServerTest do
+defmodule ModbuxTcpServerTest do
   use ExUnit.Case
-  alias Modbus.Tcp.Server
-  alias Modbus.Tcp.Client
+  alias Modbux.Tcp.Server
+  alias Modbux.Tcp.Client
 
   setup do
     RingLogger.attach()
@@ -14,16 +14,16 @@ defmodule ModbusTcpServerTest do
     state_cpid = Client.state(cpid)
     assert state_cpid != Client.configure(cpid, tcp_port: 2000)
     assert :ok == Client.connect(cpid)
-    Modbus.Tcp.Client.request(cpid, {:rc, 0x50, 20818, 2})
-    assert Modbus.Tcp.Client.confirmation(cpid) == {:ok, [0, 1]}
-    Modbus.Tcp.Client.request(cpid, {:rhr, 0x50, 20817, 1})
-    assert Modbus.Tcp.Client.confirmation(cpid) == {:ok, [0]}
-    Modbus.Tcp.Client.request(cpid, {:phr, 0x50, 20817, [1, 1]})
-    assert Modbus.Tcp.Client.confirmation(cpid) == :ok
-    Modbus.Tcp.Client.request(cpid, {:rhr, 0x50, 20817, 2})
-    assert Modbus.Tcp.Client.confirmation(cpid) == {:ok, [1, 1]}
-    Modbus.Tcp.Client.request(cpid, {:rhr, 0x50, 20818, 1})
-    assert Modbus.Tcp.Client.confirmation(cpid) == {:ok, [1]}
+    Modbux.Tcp.Client.request(cpid, {:rc, 0x50, 20818, 2})
+    assert Modbux.Tcp.Client.confirmation(cpid) == {:ok, [0, 1]}
+    Modbux.Tcp.Client.request(cpid, {:rhr, 0x50, 20817, 1})
+    assert Modbux.Tcp.Client.confirmation(cpid) == {:ok, [0]}
+    Modbux.Tcp.Client.request(cpid, {:phr, 0x50, 20817, [1, 1]})
+    assert Modbux.Tcp.Client.confirmation(cpid) == :ok
+    Modbux.Tcp.Client.request(cpid, {:rhr, 0x50, 20817, 2})
+    assert Modbux.Tcp.Client.confirmation(cpid) == {:ok, [1, 1]}
+    Modbux.Tcp.Client.request(cpid, {:rhr, 0x50, 20818, 1})
+    assert Modbux.Tcp.Client.confirmation(cpid) == {:ok, [1]}
     assert :error == Client.configure(cpid, active: false)
     assert :ok == Client.close(cpid)
     assert :ok == Client.stop(cpid)
@@ -42,8 +42,8 @@ defmodule ModbusTcpServerTest do
     {:ok, _spid} = Server.start_link(model: model, port: 2001, active: true)
     {:ok, c_pid} = Client.start_link(ip: {127, 0, 0, 1}, tcp_port: 2001)
     Client.connect(c_pid)
-    Modbus.Tcp.Client.request(c_pid, {:rc, 0x50, 0x5152, 1})
-    assert Modbus.Tcp.Client.confirmation(c_pid) == {:ok, [0]}
+    Modbux.Tcp.Client.request(c_pid, {:rc, 0x50, 0x5152, 1})
+    assert Modbux.Tcp.Client.confirmation(c_pid) == {:ok, [0]}
     assert_received {:modbus_tcp, {:server_request, {:rc, 80, 20818, 1}}}
   end
 

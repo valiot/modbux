@@ -1,6 +1,6 @@
 defmodule FloatTest do
   use ExUnit.Case
-  alias Modbus.IEEE754
+  alias Modbux.IEEE754
 
   # https://www.h-schmidt.net/FloatConverter/IEEE754.html
   # endianess tested agains opto22 analog modules

@@ -1,20 +1,8 @@
-defmodule Modbus.Response do
-  @moduledoc false
-  alias Modbus.Helper
-
-  # @exceptions %{
-  #   1 => "Illegal function",
-  #   2 => "Illegal data address",
-  #   3 => "Illegal data value",
-  #   4 => "Slave device failure",
-  #   5 => "Acknowledge",
-  #   6 => "Slave device busy",
-  #   7 => "Negative Acknowledge",
-  #   8 => "Memory parity error",
-  #   9 => "Unkown error",
-  #   10 => "Gateway path unavailable",
-  #   11 => "Gateway target device failed to respond",
-  # }
+defmodule Modbux.Response do
+  @moduledoc """
+  Response helper, functions that handles Server & Slave response messages.
+  """
+  alias Modbux.Helper
 
   @exceptions %{
     1 => :efun,
@@ -30,6 +18,8 @@ defmodule Modbus.Response do
     11 => :egtarg
   }
 
+  @spec pack({:fc | :phr | :rc | :rhr | :ri | :rir, integer, any, maybe_improper_list | integer}, any) ::
+          <<_::24, _::_*8>>
   def pack({:rc, slave, _address, count}, values) do
     ^count = Enum.count(values)
     data = Helper.bitlist_to_bin(values)
@@ -70,6 +60,7 @@ defmodule Modbus.Response do
     writes(:a, slave, 16, address, values)
   end
 
+  @spec parse(any, <<_::24, _::_*8>>) :: nil | [any] | {:error, any} | {:error, byte, <<_::104>>}
   def parse({:rc, slave, _address, count}, <<slave, 1, bytes, data::binary>>) do
     ^bytes = Helper.byte_count(count)
     Helper.bin_to_bitlist(count, data)
@@ -112,7 +103,7 @@ defmodule Modbus.Response do
     nil
   end
 
-  # error
+  # Error messages.
   def parse(_cmd, <<_slave, _fc, error_code>>) when error_code in 1..11 do
     {:error, @exceptions[error_code]}
   end
@@ -121,6 +112,7 @@ defmodule Modbus.Response do
     {:error, slave, "Unknown error"}
   end
 
+  @spec length({:fc | :phr | :rc | :rhr | :ri | :rir, any, any, any}) :: number
   def length({:rc, _slave, _address, count}) do
     3 + Helper.byte_count(count)
   end

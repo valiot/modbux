@@ -52,13 +52,13 @@ defmodule Modbux.Rtu.Slave do
   %{slave_id => %{{memory_type, address_number} => value}}
   ```
   where:
-    * `slave_id` - specify a unique unit address from 1 to 247.
-    * `memory_type` - specify the memory between:
+    * `slave_id` - specifies a unique unit address from 1 to 247.
+    * `memory_type` - specifies the memory between:
          * `:c` - Discrete Output Coils.
          * `:i` - Discrete Input Contacts.
          * `:ir` - Analog Input Registers.
          * `:hr` - Analog Output Registers.
-    * `address_number` - specify the memory address.
+    * `address_number` - specifies the memory address.
     * `value` - the current value from that memory.
 
   ## Example

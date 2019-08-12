@@ -1,6 +1,6 @@
 defmodule Modbux.Model.Shared do
   @moduledoc """
-  An agent that holds the current the actual state of the Server/Slave DB.
+  An agent that holds the current state of the Server/Slave DB.
   """
   alias Modbux.Model
 

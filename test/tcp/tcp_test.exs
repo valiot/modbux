@@ -1,6 +1,6 @@
 defmodule TcpTest do
   use ExUnit.Case
-  alias Modbus.Tcp
+  alias Modbux.Tcp
 
   # http://www.tahapaksu.com/crc/
   # https://www.lammertbies.nl/comm/info/crc-calculation.html

@@ -11,8 +11,8 @@ defmodule RtuFramer do
     {:ok, m_pid} = UART.start_link()
     {:ok, s_pid} = UART.start_link()
 
-    UART.open(m_pid, "tnt0", speed: 115_200, framing: {Modbus.Rtu.Framer, behavior: :master})
-    UART.open(s_pid, "tnt1", speed: 115_200, framing: {Modbus.Rtu.Framer, behavior: :slave})
+    UART.open(m_pid, "tnt0", speed: 115_200, framing: {Modbux.Rtu.Framer, behavior: :master})
+    UART.open(s_pid, "tnt1", speed: 115_200, framing: {Modbux.Rtu.Framer, behavior: :slave})
 
     # Master Requests.
     # Read Coil Status (FC=01)

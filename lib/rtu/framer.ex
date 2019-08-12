@@ -1,12 +1,14 @@
-defmodule Modbus.Rtu.Framer do
+defmodule Modbux.Rtu.Framer do
+  @moduledoc """
+  A framer for Modbus RTU frames. This framer doesn't do anything for the transmit
+  direction, but for receives, it will collect bytes that follows the Modbus RTU protocol,
+  it also execute the CRC validation and returns the frame or the error.
+  """
+
   @behaviour Circuits.UART.Framing
 
   require Logger
-  alias Modbus.Helper
-
-  @moduledoc """
-    Modbus docs here!
-  """
+  alias Modbux.Helper
 
   defmodule State do
     @moduledoc false

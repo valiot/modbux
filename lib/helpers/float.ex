@@ -1,4 +1,4 @@
-defmodule Modbus.IEEE754 do
+defmodule Modbux.IEEE754 do
   @moduledoc """
   IEEE754 float helper
 

@@ -1,22 +1,17 @@
-defmodule Modbus.Tcp.Client do
-  alias Modbus.Tcp.Client
-  alias Modbus.Tcp
-  use GenServer, restart: :transient
+defmodule Modbux.Tcp.Client do
+  @moduledoc """
+  API for Modbus TCP Client.
+  """
+  alias Modbux.Tcp.Client
+  alias Modbux.Tcp
+  use GenServer, restart: :permanent, shutdown: 500
+  require Logger
+
   @timeout 2000
   @port 502
   @ip {0, 0, 0, 0}
   @active false
-  require Logger
   @to 2000
-
-  @moduledoc """
-  TCP Client.
-
-  ## Example
-
-  ```elixir
-  ```
-  """
 
   defstruct ip: nil,
             tcp_port: nil,
@@ -36,47 +31,34 @@ defmodule Modbus.Tcp.Client do
           | {:tcp_port, non_neg_integer}
           | {:timeout, non_neg_integer}
 
-  ##########################################
-  # Public API
-  ##########################################
-
   @doc """
-  Starts the Client.
+  Starts a Modbus TCP Client process.
 
-  `state` is a keyword list where:
-  `ip` is the internet address to connect to.
-  `tcp_port` is the tcp port number to connect to.
-  `socket` is the port of the Modbus Client.
-  `timeout` is the connection timeout.
-  `active` the way in which massages are received.
-  'transid' the actual transaction id.
-  'status' the Client status.
+  The following options are available:
+
+    * `ip` - is the internet address of the desired Modbux TCP Server.
+    * `tcp_port` - is the desired Modbux TCP Server tcp port number.
+    * `timeout` - is the connection timeout.
+    * `active` - (`true` or `false`) specifies whether data is received as
+        messages (mailbox) or by calling `confirmation/1` each time `request/2` is called.
+
+    The messages (when active mode is true) have the following form:
+
+    `{:modbus_tcp, cmd, values}`
 
   ## Example
 
   ```elixir
-  Modbus.Tcp.Master.start_link([ip: {10,77,0,2}, port: 502, timeout: 2000])
+  Modbux.Tcp.Client.start_link(ip: {10,77,0,2}, port: 502, timeout: 2000, active: true)
   ```
   """
-  @spec start_link([client_option], [term]) :: {:ok, pid} | {:error, term}
   def start_link(params, opts \\ []) do
     GenServer.start_link(__MODULE__, params, opts)
-  end
-
-  def child_spec(opts) do
-    %{
-      id: __MODULE__,
-      start: {__MODULE__, :start_link, [opts]},
-      type: :worker,
-      restart: :permanent,
-      shutdown: 500
-    }
   end
 
   @doc """
   Stops the Client.
   """
-  @spec stop(GenServer.server()) :: :ok | :error
   def stop(pid) do
     GenServer.stop(pid)
   end
@@ -84,62 +66,65 @@ defmodule Modbus.Tcp.Client do
   @doc """
   Gets the state of the Client.
   """
-  # @spec state(GenServer.server()) :: {term() | :closed, [uart_option]}
   def state(pid) do
     GenServer.call(pid, :state)
   end
 
   @doc """
-  Configure the Modbus client (`status` must be `:closed`).
+  Configure the Client (`status` must be `:closed`).
+
+  The following options are available:
+
+  * `ip` - is the internet address of the desired Modbux TCP Server.
+  * `tcp_port` - is the Modbux TCP Server tcp port number .
+  * `timeout` - is the connection timeout.
+  * `active` - (`true` or `false`) specifies whether data is received as
+       messages (mailbox) or by calling `confirmation/1` each time `request/2` is called.
   """
-  @spec configure(GenServer.server(), [client_option]) :: :ok | {:error, term}
   def configure(pid, params) do
     GenServer.call(pid, {:configure, params})
   end
 
   @doc """
-  Connect the Modbus client to a server.
+  Connect the Client to a Server.
   """
   def connect(pid) do
     GenServer.call(pid, :connect)
   end
 
   @doc """
-  Close the tcp port of the Modbus client.
+  Close the tcp port of the Client.
   """
   def close(pid) do
     GenServer.call(pid, :close)
   end
 
   @doc """
-  send a request to Modbus TCP Server.
+  Send a request to Modbux TCP Server.
 
-  `cmd` is one of:
-
-  - `{:rc, slave, address, count}` read `count` coils.
-  - `{:ri, slave, address, count}` read `count` inputs.
-  - `{:rhr, slave, address, count}` read `count` holding registers.
-  - `{:rir, slave, address, count}` read `count` input registers.
-  - `{:fc, slave, address, value}` force single coil.
-  - `{:phr, slave, address, value}` preset single holding register.
-  - `{:fc, slave, address, values}` force multiple coils.
-  - `{:phr, slave, address, values}` preset multiple holding registers.
-
-  Returns `:ok`.
+  `cmd` is a 4 elements tuple, as follows:
+    - `{:rc, slave, address, count}` read `count` coils.
+    - `{:ri, slave, address, count}` read `count` inputs.
+    - `{:rhr, slave, address, count}` read `count` holding registers.
+    - `{:rir, slave, address, count}` read `count` input registers.
+    - `{:fc, slave, address, value}` force single coil.
+    - `{:phr, slave, address, value}` preset single holding register.
+    - `{:fc, slave, address, values}` force multiple coils.
+    - `{:phr, slave, address, values}` preset multiple holding registers.
   """
   def request(pid, cmd) do
     GenServer.call(pid, {:request, cmd})
   end
 
   @doc """
-  Reads the confirmation of the connected Modbus server.
+  In passive mode (active: false), reads the confirmation of the connected Modbux Server.
   """
   def confirmation(pid) do
     GenServer.call(pid, :confirmation)
   end
 
   @doc """
-  In active mode, flushed the pending messages.
+  In passive mode (active: false), flushed the pending messages.
   """
   def flush(pid) do
     GenServer.call(pid, :flush)
@@ -326,7 +311,7 @@ defmodule Modbus.Tcp.Client do
     {:reply, {:ok, state.pending_msg}, new_state}
   end
 
-  # only for active mode
+  # only for active mode (active: true)
   def handle_info({:tcp, _port, response}, state) do
     Logger.debug("(#{__MODULE__}, :message_active) response: #{inspect(response)}")
     Logger.debug("(#{__MODULE__}, :message_active) state: #{inspect(state)}")

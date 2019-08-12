@@ -1,6 +1,6 @@
-defmodule ModbusTcpClientTest do
+defmodule ModbuxTcpClientTest do
   use ExUnit.Case
-  alias Modbus.Tcp.{Client, Server}
+  alias Modbux.Tcp.{Client, Server}
 
   test "test Client (connection, stop, configuration)" do
     model = %{80 => %{{:c, 20818} => 0, {:c, 20819} => 1, {:hr, 20817} => 0}}

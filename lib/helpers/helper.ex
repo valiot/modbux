@@ -1,5 +1,7 @@
-defmodule Modbus.Helper do
-  @moduledoc false
+defmodule Modbux.Helper do
+  @moduledoc """
+  Binary helper module
+  """
   use Bitwise
 
   @hi [
@@ -520,6 +522,7 @@ defmodule Modbus.Helper do
     0x40
   ]
 
+  @spec crc(binary) :: <<_::16>>
   def crc(data) do
     crc(data, 0xFF, 0xFF)
   end
@@ -534,10 +537,12 @@ defmodule Modbus.Helper do
     crc(tail, hi, lo)
   end
 
+  @spec byte_count(integer) :: integer
   def byte_count(count) do
     div(count - 1, 8) + 1
   end
 
+  @spec bool_to_byte(0 | 1) :: 0 | 255
   def bool_to_byte(value) do
     # enforce 0 or 1 only
     case value do
@@ -546,6 +551,7 @@ defmodule Modbus.Helper do
     end
   end
 
+  @spec bin_to_bitlist(integer, <<_::8, _::_*8>>) :: [any]
   def bin_to_bitlist(count, <<b7::1, b6::1, b5::1, b4::1, b3::1, b2::1, b1::1, b0::1>>) when count <= 8 do
     Enum.take([b0, b1, b2, b3, b4, b5, b6, b7], count)
   end
@@ -554,6 +560,7 @@ defmodule Modbus.Helper do
     [b0, b1, b2, b3, b4, b5, b6, b7] ++ bin_to_bitlist(count - 8, tail)
   end
 
+  @spec bin_to_reglist(pos_integer, <<_::16, _::_*8>>) :: [char, ...]
   def bin_to_reglist(1, <<register::16>>) do
     [register]
   end
@@ -562,8 +569,9 @@ defmodule Modbus.Helper do
     [register | bin_to_reglist(count - 1, tail)]
   end
 
+  @spec bitlist_to_bin(any) :: any
   def bitlist_to_bin(values) do
-    lists = Enum.chunk(values, 8, 8, [0, 0, 0, 0, 0, 0, 0, 0])
+    lists = Enum.chunk_every(values, 8, 8, [0, 0, 0, 0, 0, 0, 0, 0])
 
     list =
       for list8 <- lists do
@@ -579,6 +587,7 @@ defmodule Modbus.Helper do
     :erlang.iolist_to_binary(list)
   end
 
+  @spec reglist_to_bin(any) :: any
   def reglist_to_bin(values) do
     list =
       for value <- values do

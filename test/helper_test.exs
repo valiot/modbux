@@ -1,6 +1,6 @@
 defmodule HelperTest do
   use ExUnit.Case
-  alias Modbus.Helper
+  alias Modbux.Helper
 
   test "bool_to_byte test" do
     assert 0x00 == Helper.bool_to_byte(0)

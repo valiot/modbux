@@ -1,17 +1,22 @@
-defmodule Modbus.Mixfile do
+defmodule Modbux.Mixfile do
   use Mix.Project
 
   def project do
     [
-      app: :modbus,
-      version: "0.3.7",
-      elixir: "~> 1.3",
-      compilers: [:elixir, :app],
-      build_embedded: Mix.env() == :prod,
+      app: :modbux,
+      version: "0.3.8",
+      elixir: "~> 1.8",
       start_permanent: Mix.env() == :prod,
+      deps: deps(),
       description: description(),
+      name: "Modbux",
       package: package(),
-      deps: deps()
+      source_url: "https://github.com/valiot/modbux",
+      aliases: aliases(),
+      docs: [
+        main: "readme",
+        extras: ["README.md"]
+      ]
     ]
   end
 
@@ -24,22 +29,40 @@ defmodule Modbus.Mixfile do
   defp deps do
     [
       {:circuits_uart, "~> 1.3"},
-      {:ex_doc, "~> 0.16", only: :dev},
+      {:ex_doc, "~> 0.19", only: :dev},
       {:ring_logger, "~> 0.4"}
     ]
   end
 
   defp description do
-    "Modbus library with TCP Master & Slave implementation."
+    "Modbus for network and serial communication, this library implements TCP (Client & Server) and RTU (Master & Slave) protocols."
+  end
+
+  defp aliases do
+    [docs: ["docs", &copy_images/1]]
+  end
+
+  defp copy_images(_) do
+    File.mkdir("doc/assets/")
+
+    File.ls!("assets")
+    |> Enum.each(fn x ->
+      File.cp!("assets/#{x}", "doc/assets/#{x}")
+    end)
   end
 
   defp package do
     [
-      name: :modbus,
-      files: ["lib", "test", "script", "mix.*", "*.exs", "*.md", ".gitignore", "LICENSE"],
-      maintainers: ["Samuel Ventura"],
-      licenses: ["Apache 2.0"],
-      links: %{"GitHub" => "https://github.com/samuelventura/modbus/"}
+      files: [
+        "lib",
+        "test",
+        "mix.exs",
+        "README.md",
+        "LICENSE"
+      ],
+      maintainers: ["valiot"],
+      licenses: ["Apache"],
+      links: %{"GitHub" => "https://github.com/valiot/modbux"}
     ]
   end
 end

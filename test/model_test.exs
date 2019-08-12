@@ -1,6 +1,6 @@
 defmodule ModelTest do
   use ExUnit.Case
-  alias Modbus.Model
+  alias Modbux.Model
   @state %{0x50 => %{{:c, 0x5152} => 0, {:c, 0x5153} => 0, {:c, 0x5155} => 0}}
 
   test "invalid slave" do

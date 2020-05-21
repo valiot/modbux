@@ -144,6 +144,7 @@ defmodule Modbux.Rtu.Master do
     uart_opts = Keyword.get(params, :uart_opts, speed: @speed, rx_framing_timeout: @timeout)
     {:ok, u_pid} = UART.start_link()
     UART.open(u_pid, tty, [framing: {Framer, behavior: :master}, active: false] ++ uart_opts)
+    Logger.debug("(#{__MODULE__}) Reported UART configuration: \"#{inspect(UART.configuration(u_pid))}\"")
 
     state = %Master{
       parent_pid: parent_pid,

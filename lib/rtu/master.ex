@@ -141,7 +141,7 @@ defmodule Modbux.Rtu.Master do
     timeout = Keyword.get(params, :timeout, @timeout)
     tty = Keyword.fetch!(params, :tty)
     Logger.debug("(#{__MODULE__}) Starting Modbux Master at \"#{tty}\"")
-    uart_opts = Keyword.get(params, :uart_otps, speed: @speed, rx_framing_timeout: @timeout)
+    uart_opts = Keyword.get(params, :uart_opts, speed: @speed, rx_framing_timeout: @timeout)
     {:ok, u_pid} = UART.start_link()
     UART.open(u_pid, tty, [framing: {Framer, behavior: :master}, active: false] ++ uart_opts)
 
@@ -196,7 +196,7 @@ defmodule Modbux.Rtu.Master do
     parent_pid = if active, do: parent_pid
     timeout = Keyword.get(params, :timeout, state.timeout)
     tty = Keyword.get(params, :tty, state.tty)
-    uart_opts = Keyword.get(params, :uart_otps, state.uart_opts)
+    uart_opts = Keyword.get(params, :uart_opts, state.uart_opts)
     Logger.debug("(#{__MODULE__}) Starting Modbux Master at \"#{tty}\"")
 
     UART.close(state.uart_pid)

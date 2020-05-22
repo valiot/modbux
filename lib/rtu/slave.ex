@@ -16,7 +16,7 @@ defmodule Modbux.Rtu.Slave do
   defstruct model_pid: nil,
             uart_pid: nil,
             tty: nil,
-            uart_otps: nil,
+            uart_opts: nil,
             parent_pid: nil
 
   @doc """
@@ -126,17 +126,17 @@ defmodule Modbux.Rtu.Slave do
     tty = Keyword.fetch!(params, :tty)
     model = Keyword.fetch!(params, :model)
     Logger.debug("(#{__MODULE__}) Starting Modbux Slave at \"#{tty}\"")
-    uart_otps = Keyword.get(params, :uart_otps, speed: @speed, rx_framing_timeout: @timeout)
+    uart_opts = Keyword.get(params, :uart_opts, speed: @speed, rx_framing_timeout: @timeout)
     {:ok, model_pid} = Shared.start_link(model: model)
     {:ok, u_pid} = UART.start_link()
-    UART.open(u_pid, tty, [framing: {Framer, behavior: :slave}] ++ uart_otps)
+    UART.open(u_pid, tty, [framing: {Framer, behavior: :slave}] ++ uart_opts)
 
     state = %Slave{
       model_pid: model_pid,
       parent_pid: parent_pid,
       tty: tty,
       uart_pid: u_pid,
-      uart_otps: uart_otps
+      uart_opts: uart_opts
     }
 
     {:ok, state}

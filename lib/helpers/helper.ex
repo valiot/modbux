@@ -2,7 +2,8 @@ defmodule Modbux.Helper do
   @moduledoc """
   Binary helper module
   """
-  use Bitwise
+
+  @otp_vesion System.otp_release() |> Integer.parse() |> elem(0)
 
   @hi [
     0x00,
@@ -531,8 +532,8 @@ defmodule Modbux.Helper do
 
   defp crc(data, hi, lo) do
     <<first, tail::binary>> = data
-    index = lo ^^^ first
-    lo = hi ^^^ Enum.at(@hi, index)
+    index = xor(lo, first)
+    lo = xor(hi, Enum.at(@hi, index))
     hi = Enum.at(@lo, index)
     crc(tail, hi, lo)
   end
@@ -595,5 +596,11 @@ defmodule Modbux.Helper do
       end
 
     :erlang.iolist_to_binary(list)
+  end
+
+  if @otp_vesion >= 24 do
+    defp xor(a, b), do: Bitwise.bxor(a, b)
+  else
+    defp xor(a, b), do: Bitwise.^^^(a, b)
   end
 end

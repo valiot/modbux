@@ -4,7 +4,7 @@ defmodule Modbux.Mixfile do
   def project do
     [
       app: :modbux,
-      version: "0.3.9",
+      version: "0.3.10",
       elixir: "~> 1.8",
       start_permanent: Mix.env() == :prod,
       deps: deps(),

@@ -233,7 +233,7 @@ Use `request/2` to send a `cmd` (command) to a Modbus TCP Server and `confirmati
 
 ```elixir
 # Starts the Client that will connect to a Server with tcp port: 2000
-{:ok, cpid} = Modbux.Tcp.Client.start_link(ip: {127,0,0,1}, port: 2000, timeout: 2000, active: true)
+{:ok, cpid} = Modbux.Tcp.Client.start_link(ip: {127,0,0,1}, tcp_port: 2000, timeout: 2000)
 # Connect to the Server
 Modbux.Tcp.Client.connect(cpid)
 # Read 1 coil at 20818 from the device 80

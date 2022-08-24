@@ -1,10 +1,13 @@
+<div align="center">
+  <img src="https://raw.githubusercontent.com/valiot/modbux/master/assets/images/modbux-logo.png" alt="modbux Logo" width="512" height="151" />
+</div>
+
+***
 <br>
 <div align="center">
-  <img src="assets/valiot-logo-blue.png" alt="Valiot Logo" width="192" height="57" />
+  <img src="https://raw.githubusercontent.com/valiot/modbux/master/assets/images/valiot-logo-blue.png" alt="Valiot Logo" width="384" height="80" />
 </div>
-<br>  
-
-# Modbux
+<br>
 
 Modbux is a library for network and serial Modbus communications. 
 
@@ -233,7 +236,7 @@ Use `request/2` to send a `cmd` (command) to a Modbus TCP Server and `confirmati
 
 ```elixir
 # Starts the Client that will connect to a Server with tcp port: 2000
-{:ok, cpid} = Modbux.Tcp.Client.start_link(ip: {127,0,0,1}, port: 2000, timeout: 2000, active: true)
+{:ok, cpid} = Modbux.Tcp.Client.start_link(ip: {127,0,0,1}, tcp_port: 2000, timeout: 2000)
 # Connect to the Server
 Modbux.Tcp.Client.connect(cpid)
 # Read 1 coil at 20818 from the device 80

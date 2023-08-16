@@ -1,4 +1,4 @@
-use Mix.Config
+import Config
 
 # Add the RingLogger backend. This removes the
 # default :console backend.

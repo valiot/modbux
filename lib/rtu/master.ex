@@ -220,7 +220,7 @@ defmodule Modbux.Rtu.Master do
 
   # Catch all clause
   def handle_info(msg, state) do
-    Logger.warn("(#{__MODULE__}) Unknown msg: #{inspect(msg)}")
+    Logger.warning("(#{__MODULE__}) Unknown msg: #{inspect(msg)}")
     {:noreply, state}
   end
 
@@ -231,18 +231,18 @@ defmodule Modbux.Rtu.Master do
   defp uart_read(state, cmd) do
     case UART.read(state.uart_pid, state.timeout) do
       {:ok, ""} ->
-        Logger.warn("(#{__MODULE__}) Timeout")
+        Logger.warning("(#{__MODULE__}) Timeout")
         {:error, :timeout}
 
       {:ok, {:error, reason, msg}} ->
-        Logger.warn("(#{__MODULE__}) Error in frame: #{inspect(msg)}, reason: #{inspect(reason)}")
+        Logger.warning("(#{__MODULE__}) Error in frame: #{inspect(msg)}, reason: #{inspect(reason)}")
         {:error, reason}
 
       {:ok, slave_response} ->
         Rtu.parse_res(cmd, slave_response) |> pack_res()
 
       {:error, reason} ->
-        Logger.warn("(#{__MODULE__}) Error: #{inspect(reason)}")
+        Logger.warning("(#{__MODULE__}) Error: #{inspect(reason)}")
         {:error, reason}
     end
   end

@@ -302,7 +302,7 @@ Based on:
   * Issue a github pull request (fill the PR template).
 
 ## License
-  See [LICENSE](./LICENSE).
+  See [LICENSE](https://github.com/valiot/modbux/blob/master/LICENSE).
 
 ## TODO
   * Add Modbux ASCII.

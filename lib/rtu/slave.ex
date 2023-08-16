@@ -178,7 +178,7 @@ defmodule Modbux.Rtu.Slave do
   end
 
   def handle_info({:circuits_uart, device, {:error, reason, bad_frame}}, state) do
-    Logger.warn("(#{__MODULE__}) Error with \"#{device}\" received: #{bad_frame}, reason: #{reason}")
+    Logger.warning("(#{__MODULE__}) Error with \"#{device}\" received: #{bad_frame}, reason: #{reason}")
 
     case reason do
       :einval ->
@@ -197,7 +197,7 @@ defmodule Modbux.Rtu.Slave do
   end
 
   def handle_info({:circuits_uart, _device, {:partial, data}}, state) do
-    Logger.warn("(#{__MODULE__})  Timeout: #{inspect(data)}")
+    Logger.warning("(#{__MODULE__})  Timeout: #{inspect(data)}")
     {:noreply, state}
   end
 
@@ -230,7 +230,7 @@ defmodule Modbux.Rtu.Slave do
 
   # Catch all clause
   def handle_info(msg, state) do
-    Logger.warn("(#{__MODULE__})  Unknown msg: #{inspect(msg)}")
+    Logger.warning("(#{__MODULE__})  Unknown msg: #{inspect(msg)}")
     {:noreply, state}
   end
 

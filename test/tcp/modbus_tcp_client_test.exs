@@ -15,7 +15,7 @@ defmodule ModbuxTcpClientTest do
   end
 
   test "test Client errors" do
-    {:ok, cpid} = Client.start_link(ip: {127, 0, 0, 1}, port: 5000)
+    {:ok, cpid} = Client.start_link(ip: {127, 0, 0, 1}, tcp_port: 5000)
     assert {:error, :econnrefused} == Client.connect(cpid)
     assert {:error, :closed} == Client.close(cpid)
   end

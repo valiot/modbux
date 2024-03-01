@@ -22,7 +22,7 @@ defmodule Modbux.Tcp.Server.Handler do
   end
 
   def handle_info({:tcp, socket, data}, state) do
-    Logger.debug("(#{__MODULE__}) Received: #{data} ")
+    Logger.debug("(#{__MODULE__}) Received: #{inspect(data, base: :hex)} ")
     {cmd, transid} = Tcp.parse_req(data)
     Logger.debug("(#{__MODULE__}) Received Modbux request: #{inspect({cmd, transid})}")
 

@@ -178,7 +178,7 @@ defmodule Modbux.Rtu.Slave do
   end
 
   def handle_info({:circuits_uart, device, {:error, reason, bad_frame}}, state) do
-    Logger.warning("(#{__MODULE__}) Error with \"#{device}\" received: #{bad_frame}, reason: #{reason}")
+    Logger.warning("(#{__MODULE__}) Error with \"#{device}\" received: #{inspect(bad_frame, base: :hex)}, reason: #{reason}")
 
     case reason do
       :einval ->

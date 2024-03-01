@@ -59,7 +59,10 @@ defmodule Modbux.Tcp do
       if size == r_size do
         payload
       else
-        Logger.error("#{__MODULE__} size = #{size}, payload_size = #{r_size}, msg = #{inspect(msg)}")
+        Logger.error(
+          "#{__MODULE__} size = #{size}, payload_size = #{r_size}, msg = #{inspect(msg, base: :hex)}"
+        )
+
         nil
       end
 
@@ -73,7 +76,7 @@ defmodule Modbux.Tcp do
   end
 
   def unwrap(inv_data) do
-    Logger.error("#{__MODULE__} invalid data: #{inspect(inv_data)}")
+    Logger.error("#{__MODULE__} invalid data: #{inspect(inv_data, base: :hex)}")
     raise("#{__MODULE__} invalid data: #{inspect(inv_data)}")
   end
 end

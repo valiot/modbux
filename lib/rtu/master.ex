@@ -177,7 +177,7 @@ defmodule Modbux.Rtu.Master do
 
   def handle_call({:request, cmd}, _from, state) do
     uart_frame = Rtu.pack_req(cmd)
-    Logger.debug("(#{__MODULE__}) Frame: #{inspect(uart_frame <> <<0x00>>)}")
+    Logger.debug("(#{__MODULE__}) Frame: #{inspect(uart_frame, base: :hex)}")
     UART.flush(state.uart_pid)
     UART.write(state.uart_pid, uart_frame)
 

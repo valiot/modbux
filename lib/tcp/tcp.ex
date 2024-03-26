@@ -52,15 +52,17 @@ defmodule Modbux.Tcp do
   end
 
   @spec unwrap(<<_::48, _::_*8>>, char) :: nil | binary
-  def unwrap(<<transid::16, 0, 0, size::16, payload::binary>> = msg, transid) do
+  def unwrap(<<transid::16, protocol_id_h, protocol_id_l, size::16, payload::binary>> = msg, transid) do
     r_size = :erlang.byte_size(payload)
+
+    check_protocol_identifier(protocol_id_h, protocol_id_l)
 
     data =
       if size == r_size do
         payload
       else
         Logger.error(
-          "#{__MODULE__} size = #{size}, payload_size = #{r_size}, msg = #{inspect(msg, base: :hex)}"
+          "(#{__MODULE__}) size = #{size}, payload_size = #{r_size}, msg = #{inspect(msg, base: :hex)}"
         )
 
         nil
@@ -70,13 +72,19 @@ defmodule Modbux.Tcp do
   end
 
   @spec unwrap(<<_::48, _::_*8>>) :: {binary(), char()}
-  def unwrap(<<transid::16, 0, 0, size::16, payload::binary>>) do
+  def unwrap(<<transid::16, protocol_id_h, protocol_id_l, size::16, payload::binary>>) do
     ^size = :erlang.byte_size(payload)
+    check_protocol_identifier(protocol_id_h, protocol_id_l)
     {payload, transid}
   end
 
   def unwrap(inv_data) do
-    Logger.error("#{__MODULE__} invalid data: #{inspect(inv_data, base: :hex)}")
-    raise("#{__MODULE__} invalid data: #{inspect(inv_data)}")
+    Logger.error("(#{__MODULE__}) invalid data: #{inspect(inv_data, base: :hex)}")
+    raise("(#{__MODULE__}) invalid data: #{inspect(inv_data)}")
   end
+
+  # Protocol identifier ->	MODBUS protocol = 0x00, 0x00
+  defp check_protocol_identifier(0, 0), do: :ok
+  defp check_protocol_identifier(protocol_id_h, protocol_id_l),
+    do: Logger.warning("(#{__MODULE__}) Protocol Identifier: #{inspect(<<protocol_id_h, protocol_id_l>>, base: :hex)}")
 end

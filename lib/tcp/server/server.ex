@@ -7,14 +7,16 @@ defmodule Modbux.Tcp.Server do
   use GenServer, restart: :transient
   require Logger
 
-  @port 502
-  @to :infinity
+  @tcp_port 502
+  @timeout :infinity
+  @packet_format :raw
 
   defstruct ip: nil,
             model_pid: nil,
             tcp_port: nil,
-            timeout: nil,
+            timeout: @timeout,
             listener: nil,
+            packet_format: @packet_format,
             parent_pid: nil,
             sup_pid: nil,
             acceptor_pid: nil
@@ -28,6 +30,7 @@ defmodule Modbux.Tcp.Server do
     * `timeout` - is the connection timeout.
     * `model` - defines the DB initial state.
     * `sup_otps` - server supervisor OTP options.
+    * `packet_fotmat` - is the :gen_tcp `packet` argument, it accepts 0 | 1 | 2 | 4 | :raw, values (default: :raw).
     * `active` - (`true` or `false`) enable/disable DB updates notifications (mailbox).
 
   The messages (when active mode is true) have the following form:
@@ -70,8 +73,8 @@ defmodule Modbux.Tcp.Server do
              | {:priority, :high | :low | :normal}}
           | {:timeout, :infinity | non_neg_integer}
         ]) :: :ignore | {:error, any} | {:ok, pid}
-  def start_link(params, opts \\ []) do
-    GenServer.start_link(__MODULE__, {params, self()}, opts)
+  def start_link(server_parameters, opts \\ []) do
+    GenServer.start_link(__MODULE__, {server_parameters, self()}, opts)
   end
 
   @spec stop(atom | pid | {atom, any} | {:via, atom, any}) :: :ok
@@ -105,24 +108,36 @@ defmodule Modbux.Tcp.Server do
     GenServer.call(pid, :get_db)
   end
 
-  def init({params, parent_pid}) do
-    port = Keyword.get(params, :port, @port)
-    timeout = Keyword.get(params, :timeout, @to)
-    parent_pid = if Keyword.get(params, :active, false), do: parent_pid
-    model = Keyword.fetch!(params, :model)
-    {:ok, model_pid} = Shared.start_link(model: model)
-    sup_opts = Keyword.get(params, :sup_opts, [])
-    {:ok, sup_pid} = Server.Supervisor.start_link(sup_opts)
+  def init({server_parameters, parent_pid}) do
+    parent_pid = if Keyword.get(server_parameters, :active, false), do: parent_pid
+    with tcp_port <- Keyword.get(server_parameters, :port, @tcp_port),
+         true <- is_integer(tcp_port),
+         timeout <- Keyword.get(server_parameters, :timeout, @timeout),
+         true <- is_integer(timeout) or timeout == :infinity,
+         packet_format <- Keyword.get(server_parameters, :packet_format, @packet_format),
+         true <- packet_format in [0, 1, 2, 4, :raw, :line],
+         true <- is_pid(parent_pid) or is_nil(parent_pid),
+         sup_opts <- Keyword.get(server_parameters, :sup_opts, []),
+         true <- is_list(sup_opts),
+         model <- Keyword.fetch!(server_parameters, :model),
+         true <- is_map(model),
+         true <- Map.keys(model) |> Enum.all?(fn key -> is_integer(key) end) do
+      {:ok, model_pid} = Shared.start_link(model: model)
+      {:ok, sup_pid} = Server.Supervisor.start_link(sup_opts)
 
-    state = %Server{
-      tcp_port: port,
-      model_pid: model_pid,
-      timeout: timeout,
-      parent_pid: parent_pid,
-      sup_pid: sup_pid
-    }
+      state = %Server{
+        tcp_port: tcp_port,
+        model_pid: model_pid,
+        timeout: timeout,
+        parent_pid: parent_pid,
+        sup_pid: sup_pid
+      }
 
-    {:ok, state, {:continue, :setup}}
+      {:ok, state, {:continue, :setup}}
+    else
+      _ ->
+        {:stop, :einval}
+    end
   end
 
   def terminate(:normal, _state), do: nil
@@ -160,7 +175,8 @@ defmodule Modbux.Tcp.Server do
   end
 
   defp listener_setup(state) do
-    case :gen_tcp.listen(state.tcp_port, [:binary, packet: :raw, active: true, reuseaddr: true]) do
+    listener_opts = [:binary, packet: state.packet_format, active: true, reuseaddr: true]
+    case :gen_tcp.listen(state.tcp_port, listener_opts) do
       {:ok, listener} ->
         {:ok, {ip, _port}} = :inet.sockname(listener)
         accept = Task.async(fn -> accept(state, listener) end)
@@ -181,7 +197,7 @@ defmodule Modbux.Tcp.Server do
 
   def close_alive_sockets(port) do
     Port.list()
-    |> Enum.filter(fn x -> Port.info(x)[:name] == 'tcp_inet' end)
+    |> Enum.filter(fn x -> Port.info(x)[:name] == ~c"tcp_inet" end)
     |> Enum.filter(fn x ->
       {:ok, {{0, 0, 0, 0}, port}} == :inet.sockname(x) || {:ok, {{127, 0, 0, 1}, port}} == :inet.sockname(x)
     end)

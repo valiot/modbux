@@ -1,7 +1,7 @@
 defmodule Modbux.Mixfile do
   use Mix.Project
 
-  @version "0.3.13"
+  @version "0.3.14"
   @source_url "https://github.com/valiot/modbux"
 
 

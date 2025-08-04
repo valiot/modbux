@@ -195,7 +195,8 @@ defmodule Modbux.Tcp.Server do
           Server.Supervisor.start_child(state.sup_pid, Server.Handler, [
             socket,
             state.model_pid,
-            state.parent_pid
+            state.parent_pid,
+            state.timeout
           ])
 
         Logger.debug("(#{__MODULE__}) New Client socket: #{inspect(socket)}, pid: #{inspect(pid)}")

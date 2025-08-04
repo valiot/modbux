@@ -10,15 +10,17 @@ defmodule Modbux.Tcp.Server.Handler do
 
   defstruct model_pid: nil,
             parent_pid: nil,
-            socket: nil
+            socket: nil,
+            timeout: nil
 
   @spec start_link([...]) :: :ignore | {:error, any} | {:ok, pid}
-  def start_link([socket, model_pid, parent_pid]) do
-    GenServer.start_link(__MODULE__, [socket, model_pid, parent_pid])
+  def start_link([socket, model_pid, parent_pid, timeout]) do
+    GenServer.start_link(__MODULE__, [socket, model_pid, parent_pid, timeout])
   end
 
-  def init([socket, model_pid, parent_pid]) do
-    {:ok, %Handler{model_pid: model_pid, socket: socket, parent_pid: parent_pid}}
+  def init([socket, model_pid, parent_pid, timeout]) do
+    state = %Handler{model_pid: model_pid, socket: socket, parent_pid: parent_pid, timeout: timeout}
+    {:ok, state, timeout}
   end
 
   def handle_info({:tcp, socket, data}, state) do

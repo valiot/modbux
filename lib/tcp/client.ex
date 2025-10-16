@@ -130,6 +130,13 @@ defmodule Modbux.Tcp.Client do
     GenServer.call(pid, :flush)
   end
 
+  @doc """
+  Determine if the Client is connected to a Server.
+  """
+  def connected?(pid) do
+    GenServer.call(pid, :connected?)
+  end
+
   # callbacks
   def init(args) do
     port = args[:tcp_port] || @port
@@ -309,6 +316,11 @@ defmodule Modbux.Tcp.Client do
   def handle_call(:flush, _from, state) do
     new_state = %Client{state | pending_msg: %{}}
     {:reply, {:ok, state.pending_msg}, new_state}
+  end
+
+  def handle_call(:connected?, _from, state) do
+    connected? = state.socket != nil && state.status == :connected
+    {:reply, connected?, state}
   end
 
   # only for active mode (active: true)

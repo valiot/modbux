@@ -19,4 +19,15 @@ defmodule ModbuxTcpClientTest do
     assert {:error, :econnrefused} == Client.connect(cpid)
     assert {:error, :closed} == Client.close(cpid)
   end
+
+  test "test Client connectivity status" do
+    {:ok, _spid} = Server.start_link(model: %{}, port: 2000)
+    {:ok, cpid} = Client.start_link(ip: {127, 0, 0, 1}, tcp_port: 2000)
+    assert false == Client.connected?(cpid)
+    assert :ok == Client.connect(cpid)
+    assert true == Client.connected?(cpid)
+    assert :ok == Client.close(cpid)
+    assert false == Client.connected?(cpid)
+    assert :ok == Client.stop(cpid)
+  end
 end

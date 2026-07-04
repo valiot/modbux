@@ -45,6 +45,22 @@ defmodule Modbux.Tcp do
     Request.length(cmd) + 6
   end
 
+  @doc """
+  Splits a tcp stream into complete Modbus TCP messages (ADUs), each one framed by the
+  length field of its MBAP header. Returns the complete messages and the remaining bytes.
+  """
+  @spec split_adus(binary) :: {[binary], binary}
+  def split_adus(data), do: split_adus(data, [])
+
+  defp split_adus(<<transid::16, protocol_id::16, len::16, tail::binary>>, adus)
+       when byte_size(tail) >= len do
+    <<payload::binary-size(len), rest::binary>> = tail
+    adu = <<transid::16, protocol_id::16, len::16, payload::binary>>
+    split_adus(rest, [adu | adus])
+  end
+
+  defp split_adus(rest, adus), do: {Enum.reverse(adus), rest}
+
   @spec wrap(binary, integer) :: <<_::48, _::_*8>>
   def wrap(payload, transid) do
     size = :erlang.byte_size(payload)

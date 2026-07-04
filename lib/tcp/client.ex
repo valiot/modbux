@@ -316,7 +316,14 @@ defmodule Modbux.Tcp.Client do
     Logger.debug("(#{__MODULE__}, :message_active) response: #{inspect(response)}")
     Logger.debug("(#{__MODULE__}, :message_active) state: #{inspect(state)}")
 
-    new_state = process_responses(response, state)
+    # A tcp packet may carry several responses.
+    {responses, rest} = Tcp.split_adus(response)
+
+    if rest != <<>> do
+      Logger.error("(#{__MODULE__}, :message_active) incomplete response: #{inspect(rest, base: :hex)}")
+    end
+
+    new_state = Enum.reduce(responses, state, &process_response/2)
     {:noreply, new_state}
   end
 
@@ -331,23 +338,7 @@ defmodule Modbux.Tcp.Client do
     {:noreply, state}
   end
 
-  # A tcp packet may carry several responses, each one framed by the length field of its MBAP header.
-  defp process_responses(<<>>, state), do: state
-
-  defp process_responses(<<transid::16, protocol_id::16, len::16, tail::binary>>, state)
-       when byte_size(tail) >= len do
-    <<payload::binary-size(len), rest::binary>> = tail
-    response = <<transid::16, protocol_id::16, len::16, payload::binary>>
-    new_state = process_response(transid, response, state)
-    process_responses(rest, new_state)
-  end
-
-  defp process_responses(response, state) do
-    Logger.error("(#{__MODULE__}, :message_active) incomplete response: #{inspect(response, base: :hex)}")
-    state
-  end
-
-  defp process_response(transid, response, state) do
+  defp process_response(<<transid::16, _::binary>> = response, state) do
     Logger.debug("(#{__MODULE__}, :message_active) transid: #{inspect(transid)}")
 
     case Map.fetch(state.pending_msg, transid) do

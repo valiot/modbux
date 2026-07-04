@@ -23,23 +23,15 @@ defmodule Modbux.Tcp.Server.Handler do
 
   def handle_info({:tcp, socket, data}, state) do
     Logger.debug("(#{__MODULE__}) Received: #{inspect(data, base: :hex)} ")
-    {cmd, transid} = Tcp.parse_req(data)
-    Logger.debug("(#{__MODULE__}) Received Modbux request: #{inspect({cmd, transid})}")
 
-    case Shared.apply(state.model_pid, cmd) do
-      {:ok, values} ->
-        Logger.debug("(#{__MODULE__}) msg send")
-        resp = Tcp.pack_res(cmd, values, transid)
-        if !is_nil(state.parent_pid), do: notify(state.parent_pid, cmd)
-        :ok = :gen_tcp.send(socket, resp)
+    # A tcp packet may carry several requests.
+    {requests, rest} = Tcp.split_adus(data)
 
-      {:error, reason} ->
-        Logger.debug("(#{__MODULE__}) An error has occur: #{reason}")
-
-      nil ->
-        Logger.debug("(#{__MODULE__}) Message for another slave")
+    if rest != <<>> do
+      Logger.error("(#{__MODULE__}) incomplete request: #{inspect(rest, base: :hex)}")
     end
 
+    Enum.each(requests, fn request -> attend_request(socket, request, state) end)
     {:noreply, state}
   end
 
@@ -65,6 +57,25 @@ defmodule Modbux.Tcp.Server.Handler do
   def terminate(reason, state) do
     Logger.error("(#{__MODULE__}) Error: #{inspect(reason)}")
     :gen_tcp.close(state.socket)
+  end
+
+  defp attend_request(socket, request, state) do
+    {cmd, transid} = Tcp.parse_req(request)
+    Logger.debug("(#{__MODULE__}) Received Modbux request: #{inspect({cmd, transid})}")
+
+    case Shared.apply(state.model_pid, cmd) do
+      {:ok, values} ->
+        Logger.debug("(#{__MODULE__}) msg send")
+        resp = Tcp.pack_res(cmd, values, transid)
+        if !is_nil(state.parent_pid), do: notify(state.parent_pid, cmd)
+        :ok = :gen_tcp.send(socket, resp)
+
+      {:error, reason} ->
+        Logger.debug("(#{__MODULE__}) An error has occur: #{reason}")
+
+      nil ->
+        Logger.debug("(#{__MODULE__}) Message for another slave")
+    end
   end
 
   defp notify(pid, cmd) do

@@ -23,7 +23,8 @@ defmodule Modbux.Tcp.Client do
             d_pid: nil,
             msg_len: 0,
             pending_msg: %{},
-            cmd: nil
+            cmd: nil,
+            buffer: <<>>
 
   @type client_option ::
           {:ip, {byte(), byte(), byte(), byte()}}
@@ -316,14 +317,10 @@ defmodule Modbux.Tcp.Client do
     Logger.debug("(#{__MODULE__}, :message_active) response: #{inspect(response)}")
     Logger.debug("(#{__MODULE__}, :message_active) state: #{inspect(state)}")
 
-    # A tcp packet may carry several responses.
-    {responses, rest} = Tcp.split_adus(response)
-
-    if rest != <<>> do
-      Logger.error("(#{__MODULE__}, :message_active) incomplete response: #{inspect(rest, base: :hex)}")
-    end
-
-    new_state = Enum.reduce(responses, state, &process_response/2)
+    # A tcp packet may carry several responses or just a fragment of one,
+    # incomplete bytes are kept in the buffer until the next packet.
+    {responses, buffer} = Tcp.split_adus(state.buffer <> response)
+    new_state = Enum.reduce(responses, %Client{state | buffer: buffer}, &process_response/2)
     {:noreply, new_state}
   end
 
@@ -357,7 +354,7 @@ defmodule Modbux.Tcp.Client do
 
   defp close_socket(state) do
     :ok = :gen_tcp.close(state.socket)
-    new_state = %Client{state | socket: nil, status: :closed}
+    new_state = %Client{state | socket: nil, status: :closed, buffer: <<>>}
     new_state
   end
 end

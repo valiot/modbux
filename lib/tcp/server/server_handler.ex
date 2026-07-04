@@ -10,7 +10,8 @@ defmodule Modbux.Tcp.Server.Handler do
 
   defstruct model_pid: nil,
             parent_pid: nil,
-            socket: nil
+            socket: nil,
+            buffer: <<>>
 
   @spec start_link([...]) :: :ignore | {:error, any} | {:ok, pid}
   def start_link([socket, model_pid, parent_pid]) do
@@ -24,15 +25,11 @@ defmodule Modbux.Tcp.Server.Handler do
   def handle_info({:tcp, socket, data}, state) do
     Logger.debug("(#{__MODULE__}) Received: #{inspect(data, base: :hex)} ")
 
-    # A tcp packet may carry several requests.
-    {requests, rest} = Tcp.split_adus(data)
-
-    if rest != <<>> do
-      Logger.error("(#{__MODULE__}) incomplete request: #{inspect(rest, base: :hex)}")
-    end
-
+    # A tcp packet may carry several requests or just a fragment of one,
+    # incomplete bytes are kept in the buffer until the next packet.
+    {requests, buffer} = Tcp.split_adus(state.buffer <> data)
     Enum.each(requests, fn request -> attend_request(socket, request, state) end)
-    {:noreply, state}
+    {:noreply, %Handler{state | buffer: buffer}}
   end
 
   def handle_info({:tcp_closed, _socket}, state) do

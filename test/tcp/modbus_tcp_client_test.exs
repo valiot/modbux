@@ -45,4 +45,29 @@ defmodule ModbuxTcpClientTest do
     :gen_tcp.close(server_socket)
     :gen_tcp.close(listen_socket)
   end
+
+  # https://github.com/valiot/modbux/issues/14
+  test "client reassembles a response split across tcp packets" do
+    {:ok, listen_socket} = :gen_tcp.listen(0, [:binary, packet: :raw, active: false])
+    {:ok, port} = :inet.port(listen_socket)
+
+    {:ok, cpid} = Client.start_link(ip: {127, 0, 0, 1}, tcp_port: port, active: true)
+    assert :ok == Client.connect(cpid)
+    {:ok, server_socket} = :gen_tcp.accept(listen_socket)
+
+    assert :ok == Client.request(cpid, {:rhr, 0x50, 20817, 2})
+
+    # The response (transid 0) arrives split in two tcp packets.
+    response = Tcp.pack_res({:rhr, 0x50, 20817, 2}, [7, 9], 0)
+    <<first::binary-size(4), second::binary>> = response
+    :ok = :gen_tcp.send(server_socket, first)
+    Process.sleep(50)
+    :ok = :gen_tcp.send(server_socket, second)
+
+    assert_receive {:modbus_tcp, {:rhr, 0x50, 20817, 2}, [7, 9]}, 1000
+
+    assert :ok == Client.stop(cpid)
+    :gen_tcp.close(server_socket)
+    :gen_tcp.close(listen_socket)
+  end
 end

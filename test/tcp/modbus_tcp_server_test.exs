@@ -68,6 +68,26 @@ defmodule ModbuxTcpServerTest do
     :gen_tcp.close(socket)
   end
 
+  # https://github.com/valiot/modbux/issues/14
+  test "server reassembles a request split across tcp packets" do
+    model = %{0x50 => %{{:hr, 20817} => 7}}
+    {:ok, _spid} = Server.start_link(model: model, port: 2011)
+
+    {:ok, socket} = :gen_tcp.connect({127, 0, 0, 1}, 2011, [:binary, packet: :raw, active: false])
+
+    # The request (transid 0) is sent split in two tcp packets.
+    request = Tcp.pack_req({:rhr, 0x50, 20817, 1}, 0)
+    <<first::binary-size(5), second::binary>> = request
+    :ok = :gen_tcp.send(socket, first)
+    Process.sleep(50)
+    :ok = :gen_tcp.send(socket, second)
+
+    {:ok, resp} = :gen_tcp.recv(socket, Tcp.res_len({:rhr, 0x50, 20817, 1}), 1000)
+    assert Tcp.parse_res({:rhr, 0x50, 20817, 1}, resp, 0) == [7]
+
+    :gen_tcp.close(socket)
+  end
+
   test "DB updates from Elixir" do
     model = %{0x50 => %{{:c, 0x5152} => 0}}
     {:ok, s_pid} = Server.start_link(model: model, port: 2002, active: true)

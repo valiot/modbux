@@ -101,6 +101,10 @@ defmodule Modbux.Tcp do
 
   # Protocol identifier ->	MODBUS protocol = 0x00, 0x00
   defp check_protocol_identifier(0, 0), do: :ok
+
   defp check_protocol_identifier(protocol_id_h, protocol_id_l),
-    do: Logger.warning("(#{__MODULE__}) Protocol Identifier: #{inspect(<<protocol_id_h, protocol_id_l>>, base: :hex)}")
+    do:
+      Logger.warning(
+        "(#{__MODULE__}) Protocol Identifier: #{inspect(<<protocol_id_h, protocol_id_l>>, base: :hex)}"
+      )
 end

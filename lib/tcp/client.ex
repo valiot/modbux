@@ -316,24 +316,8 @@ defmodule Modbux.Tcp.Client do
     Logger.debug("(#{__MODULE__}, :message_active) response: #{inspect(response)}")
     Logger.debug("(#{__MODULE__}, :message_active) state: #{inspect(state)}")
 
-    h = :binary.at(response, 0)
-    l = :binary.at(response, 1)
-    transid = h * 256 + l
-    Logger.debug("(#{__MODULE__}, :message_active) transid: #{inspect(transid)}")
-
-    case Map.fetch(state.pending_msg, transid) do
-      :error ->
-        Logger.error("(#{__MODULE__}, :message_active) unknown transaction id")
-        {:noreply, state}
-
-      {:ok, cmd} ->
-        values = Tcp.parse_res(cmd, response, transid)
-        msg = {:modbus_tcp, cmd, values}
-        send(state.d_pid, msg)
-        new_pending_msg = Map.delete(state.pending_msg, transid)
-        new_state = %Client{state | cmd: nil, msg_len: 0, pending_msg: new_pending_msg}
-        {:noreply, new_state}
-    end
+    new_state = process_responses(response, state)
+    {:noreply, new_state}
   end
 
   def handle_info({:tcp_closed, _port}, state) do
@@ -345,6 +329,39 @@ defmodule Modbux.Tcp.Client do
   def handle_info(msg, state) do
     Logger.error("(#{__MODULE__}, :random_msg) msg: #{inspect(msg)}")
     {:noreply, state}
+  end
+
+  # A tcp packet may carry several responses, each one framed by the length field of its MBAP header.
+  defp process_responses(<<>>, state), do: state
+
+  defp process_responses(<<transid::16, protocol_id::16, len::16, tail::binary>>, state)
+       when byte_size(tail) >= len do
+    <<payload::binary-size(len), rest::binary>> = tail
+    response = <<transid::16, protocol_id::16, len::16, payload::binary>>
+    new_state = process_response(transid, response, state)
+    process_responses(rest, new_state)
+  end
+
+  defp process_responses(response, state) do
+    Logger.error("(#{__MODULE__}, :message_active) incomplete response: #{inspect(response, base: :hex)}")
+    state
+  end
+
+  defp process_response(transid, response, state) do
+    Logger.debug("(#{__MODULE__}, :message_active) transid: #{inspect(transid)}")
+
+    case Map.fetch(state.pending_msg, transid) do
+      :error ->
+        Logger.error("(#{__MODULE__}, :message_active) unknown transaction id")
+        state
+
+      {:ok, cmd} ->
+        values = Tcp.parse_res(cmd, response, transid)
+        msg = {:modbus_tcp, cmd, values}
+        send(state.d_pid, msg)
+        new_pending_msg = Map.delete(state.pending_msg, transid)
+        %Client{state | cmd: nil, msg_len: 0, pending_msg: new_pending_msg}
+    end
   end
 
   defp close_socket(state) do

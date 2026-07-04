@@ -73,7 +73,9 @@ defmodule ModbuxTcpServerTest do
     model = %{0x50 => %{{:hr, 20817} => 7}}
     {:ok, _spid} = Server.start_link(model: model, port: 2011)
 
-    {:ok, socket} = :gen_tcp.connect({127, 0, 0, 1}, 2011, [:binary, packet: :raw, active: false])
+    # nodelay avoids Nagle coalescing the two fragments into a single tcp packet.
+    {:ok, socket} =
+      :gen_tcp.connect({127, 0, 0, 1}, 2011, [:binary, packet: :raw, active: false, nodelay: true])
 
     # The request (transid 0) is sent split in two tcp packets.
     request = Tcp.pack_req({:rhr, 0x50, 20817, 1}, 0)

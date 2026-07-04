@@ -5,6 +5,7 @@
 * Modbus TCP Client (active mode): handles multiple responses received in a single tcp packet.
 * Modbus TCP Server: handles multiple requests received in a single tcp packet.
 * Modbus TCP Client & Server: reassemble requests/responses split across tcp packets.
+* Modbus TCP Client: pending requests are discarded when the connection is closed.
 
 ## 0.3.13
 

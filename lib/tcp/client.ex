@@ -354,7 +354,17 @@ defmodule Modbux.Tcp.Client do
 
   defp close_socket(state) do
     :ok = :gen_tcp.close(state.socket)
-    new_state = %Client{state | socket: nil, status: :closed, buffer: <<>>}
+
+    new_state = %Client{
+      state
+      | socket: nil,
+        status: :closed,
+        buffer: <<>>,
+        pending_msg: %{},
+        cmd: nil,
+        msg_len: 0
+    }
+
     new_state
   end
 end

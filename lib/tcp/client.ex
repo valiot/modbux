@@ -325,7 +325,7 @@ defmodule Modbux.Tcp.Client do
   end
 
   def handle_info({:tcp_closed, _port}, state) do
-    Logger.info("(#{__MODULE__}, :tcp_close) Server close the port")
+    Logger.info("(#{__MODULE__}, :tcp_close) Server closed the port")
     new_state = close_socket(state)
     {:noreply, new_state}
   end

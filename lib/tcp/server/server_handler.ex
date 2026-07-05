@@ -68,7 +68,7 @@ defmodule Modbux.Tcp.Server.Handler do
         :ok = :gen_tcp.send(socket, resp)
 
       {:error, reason} ->
-        Logger.debug("(#{__MODULE__}) An error has occur: #{reason}")
+        Logger.debug("(#{__MODULE__}) An error has occurred: #{reason}")
 
       nil ->
         Logger.debug("(#{__MODULE__}) Message for another slave")

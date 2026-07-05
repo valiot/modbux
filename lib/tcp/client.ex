@@ -23,7 +23,8 @@ defmodule Modbux.Tcp.Client do
             d_pid: nil,
             msg_len: 0,
             pending_msg: %{},
-            cmd: nil
+            cmd: nil,
+            buffer: <<>>
 
   @type client_option ::
           {:ip, {byte(), byte(), byte(), byte()}}
@@ -316,28 +317,15 @@ defmodule Modbux.Tcp.Client do
     Logger.debug("(#{__MODULE__}, :message_active) response: #{inspect(response)}")
     Logger.debug("(#{__MODULE__}, :message_active) state: #{inspect(state)}")
 
-    h = :binary.at(response, 0)
-    l = :binary.at(response, 1)
-    transid = h * 256 + l
-    Logger.debug("(#{__MODULE__}, :message_active) transid: #{inspect(transid)}")
-
-    case Map.fetch(state.pending_msg, transid) do
-      :error ->
-        Logger.error("(#{__MODULE__}, :message_active) unknown transaction id")
-        {:noreply, state}
-
-      {:ok, cmd} ->
-        values = Tcp.parse_res(cmd, response, transid)
-        msg = {:modbus_tcp, cmd, values}
-        send(state.d_pid, msg)
-        new_pending_msg = Map.delete(state.pending_msg, transid)
-        new_state = %Client{state | cmd: nil, msg_len: 0, pending_msg: new_pending_msg}
-        {:noreply, new_state}
-    end
+    # A tcp packet may carry several responses or just a fragment of one,
+    # incomplete bytes are kept in the buffer until the next packet.
+    {responses, buffer} = Tcp.split_adus(state.buffer <> response)
+    new_state = Enum.reduce(responses, %Client{state | buffer: buffer}, &process_response/2)
+    {:noreply, new_state}
   end
 
   def handle_info({:tcp_closed, _port}, state) do
-    Logger.info("(#{__MODULE__}, :tcp_close) Server close the port")
+    Logger.info("(#{__MODULE__}, :tcp_close) Server closed the port")
     new_state = close_socket(state)
     {:noreply, new_state}
   end
@@ -347,9 +335,36 @@ defmodule Modbux.Tcp.Client do
     {:noreply, state}
   end
 
+  defp process_response(<<transid::16, _::binary>> = response, state) do
+    Logger.debug("(#{__MODULE__}, :message_active) transid: #{inspect(transid)}")
+
+    case Map.fetch(state.pending_msg, transid) do
+      :error ->
+        Logger.error("(#{__MODULE__}, :message_active) unknown transaction id")
+        state
+
+      {:ok, cmd} ->
+        values = Tcp.parse_res(cmd, response, transid)
+        msg = {:modbus_tcp, cmd, values}
+        send(state.d_pid, msg)
+        new_pending_msg = Map.delete(state.pending_msg, transid)
+        %Client{state | cmd: nil, msg_len: 0, pending_msg: new_pending_msg}
+    end
+  end
+
   defp close_socket(state) do
     :ok = :gen_tcp.close(state.socket)
-    new_state = %Client{state | socket: nil, status: :closed}
+
+    new_state = %Client{
+      state
+      | socket: nil,
+        status: :closed,
+        buffer: <<>>,
+        pending_msg: %{},
+        cmd: nil,
+        msg_len: 0
+    }
+
     new_state
   end
 end

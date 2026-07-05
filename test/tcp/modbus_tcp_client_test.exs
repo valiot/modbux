@@ -1,5 +1,6 @@
 defmodule ModbuxTcpClientTest do
   use ExUnit.Case
+  alias Modbux.Tcp
   alias Modbux.Tcp.{Client, Server}
 
   test "test Client (connection, stop, configuration)" do
@@ -15,8 +16,78 @@ defmodule ModbuxTcpClientTest do
   end
 
   test "test Client errors" do
-    {:ok, cpid} = Client.start_link(ip: {127, 0, 0, 1}, tcp_port: 5000)
+    {:ok, cpid} = Client.start_link(ip: {127, 0, 0, 1}, tcp_port: 50123)
     assert {:error, :econnrefused} == Client.connect(cpid)
     assert {:error, :closed} == Client.close(cpid)
+  end
+
+  # https://github.com/valiot/modbux/issues/14
+  test "client handles two responses in a single tcp packet" do
+    {:ok, listen_socket} = :gen_tcp.listen(0, [:binary, packet: :raw, active: false])
+    {:ok, port} = :inet.port(listen_socket)
+
+    {:ok, cpid} = Client.start_link(ip: {127, 0, 0, 1}, tcp_port: port, active: true)
+    assert :ok == Client.connect(cpid)
+    {:ok, server_socket} = :gen_tcp.accept(listen_socket)
+
+    coils = [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1]
+    assert :ok == Client.request(cpid, {:ri, 0, 0, 16})
+    assert :ok == Client.request(cpid, {:fc, 0, 16, 1})
+
+    # Both responses (transid 0 and 1) arrive in the same tcp packet.
+    response = Tcp.pack_res({:ri, 0, 0, 16}, coils, 0) <> Tcp.pack_res({:fc, 0, 16, 1}, nil, 1)
+    :ok = :gen_tcp.send(server_socket, response)
+
+    assert_receive {:modbus_tcp, {:ri, 0, 0, 16}, ^coils}, 1000
+    assert_receive {:modbus_tcp, {:fc, 0, 16, 1}, nil}, 1000
+
+    assert :ok == Client.stop(cpid)
+    :gen_tcp.close(server_socket)
+    :gen_tcp.close(listen_socket)
+  end
+
+  test "client discards pending requests when the socket is closed" do
+    {:ok, listen_socket} = :gen_tcp.listen(0, [:binary, packet: :raw, active: false])
+    {:ok, port} = :inet.port(listen_socket)
+
+    {:ok, cpid} = Client.start_link(ip: {127, 0, 0, 1}, tcp_port: port, active: true)
+    assert :ok == Client.connect(cpid)
+    {:ok, server_socket} = :gen_tcp.accept(listen_socket)
+
+    assert :ok == Client.request(cpid, {:rhr, 0x50, 20817, 1})
+    assert :ok == Client.close(cpid)
+
+    # Requests from a closed connection can never be answered.
+    assert Client.state(cpid).pending_msg == %{}
+
+    assert :ok == Client.stop(cpid)
+    :gen_tcp.close(server_socket)
+    :gen_tcp.close(listen_socket)
+  end
+
+  # https://github.com/valiot/modbux/issues/14
+  test "client reassembles a response split across tcp packets" do
+    # nodelay avoids Nagle coalescing the two fragments into a single tcp packet.
+    {:ok, listen_socket} = :gen_tcp.listen(0, [:binary, packet: :raw, active: false, nodelay: true])
+    {:ok, port} = :inet.port(listen_socket)
+
+    {:ok, cpid} = Client.start_link(ip: {127, 0, 0, 1}, tcp_port: port, active: true)
+    assert :ok == Client.connect(cpid)
+    {:ok, server_socket} = :gen_tcp.accept(listen_socket)
+
+    assert :ok == Client.request(cpid, {:rhr, 0x50, 20817, 2})
+
+    # The response (transid 0) arrives split in two tcp packets.
+    response = Tcp.pack_res({:rhr, 0x50, 20817, 2}, [7, 9], 0)
+    <<first::binary-size(4), second::binary>> = response
+    :ok = :gen_tcp.send(server_socket, first)
+    Process.sleep(50)
+    :ok = :gen_tcp.send(server_socket, second)
+
+    assert_receive {:modbus_tcp, {:rhr, 0x50, 20817, 2}, [7, 9]}, 1000
+
+    assert :ok == Client.stop(cpid)
+    :gen_tcp.close(server_socket)
+    :gen_tcp.close(listen_socket)
   end
 end

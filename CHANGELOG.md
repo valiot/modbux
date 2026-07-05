@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.14
+
+* Modbus TCP Client (active mode): handles multiple responses received in a single tcp packet.
+* Modbus TCP Server: handles multiple requests received in a single tcp packet.
+* Modbus TCP Client & Server: reassemble requests/responses split across tcp packets.
+* Modbus TCP Client: pending requests are discarded when the connection is closed.
+
 ## 0.3.13
 
 * Modbus TCP: the protocol identifier other than Modbus (0x00, 0x00) has been relaxed and logged.

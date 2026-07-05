@@ -1,5 +1,6 @@
 defmodule ModbuxTcpServerTest do
   use ExUnit.Case
+  alias Modbux.Tcp
   alias Modbux.Tcp.Server
   alias Modbux.Tcp.Client
 
@@ -45,6 +46,48 @@ defmodule ModbuxTcpServerTest do
     Modbux.Tcp.Client.request(c_pid, {:rc, 0x50, 0x5152, 1})
     assert Modbux.Tcp.Client.confirmation(c_pid) == {:ok, [0]}
     assert_received {:modbus_tcp, {:server_request, {:rc, 80, 20818, 1}}}
+  end
+
+  # https://github.com/valiot/modbux/issues/14
+  test "server handles two requests in a single tcp packet" do
+    model = %{0x50 => %{{:c, 20818} => 1, {:hr, 20817} => 7}}
+    {:ok, _spid} = Server.start_link(model: model, port: 2010)
+
+    {:ok, socket} = :gen_tcp.connect({127, 0, 0, 1}, 2010, [:binary, packet: :raw, active: false])
+
+    # Both requests (transid 0 and 1) are sent in the same tcp packet.
+    request = Tcp.pack_req({:rc, 0x50, 20818, 1}, 0) <> Tcp.pack_req({:rhr, 0x50, 20817, 1}, 1)
+    :ok = :gen_tcp.send(socket, request)
+
+    {:ok, resp1} = :gen_tcp.recv(socket, Tcp.res_len({:rc, 0x50, 20818, 1}), 1000)
+    assert Tcp.parse_res({:rc, 0x50, 20818, 1}, resp1, 0) == [1]
+
+    {:ok, resp2} = :gen_tcp.recv(socket, Tcp.res_len({:rhr, 0x50, 20817, 1}), 1000)
+    assert Tcp.parse_res({:rhr, 0x50, 20817, 1}, resp2, 1) == [7]
+
+    :gen_tcp.close(socket)
+  end
+
+  # https://github.com/valiot/modbux/issues/14
+  test "server reassembles a request split across tcp packets" do
+    model = %{0x50 => %{{:hr, 20817} => 7}}
+    {:ok, _spid} = Server.start_link(model: model, port: 2011)
+
+    # nodelay avoids Nagle coalescing the two fragments into a single tcp packet.
+    {:ok, socket} =
+      :gen_tcp.connect({127, 0, 0, 1}, 2011, [:binary, packet: :raw, active: false, nodelay: true])
+
+    # The request (transid 0) is sent split in two tcp packets.
+    request = Tcp.pack_req({:rhr, 0x50, 20817, 1}, 0)
+    <<first::binary-size(5), second::binary>> = request
+    :ok = :gen_tcp.send(socket, first)
+    Process.sleep(50)
+    :ok = :gen_tcp.send(socket, second)
+
+    {:ok, resp} = :gen_tcp.recv(socket, Tcp.res_len({:rhr, 0x50, 20817, 1}), 1000)
+    assert Tcp.parse_res({:rhr, 0x50, 20817, 1}, resp, 0) == [7]
+
+    :gen_tcp.close(socket)
   end
 
   test "DB updates from Elixir" do

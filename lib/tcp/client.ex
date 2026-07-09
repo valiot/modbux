@@ -18,6 +18,7 @@ defmodule Modbux.Tcp.Client do
             socket: nil,
             timeout: @to,
             active: false,
+            close_on_timeout: true,
             transid: 0,
             status: nil,
             d_pid: nil,
@@ -42,6 +43,8 @@ defmodule Modbux.Tcp.Client do
     * `timeout` - is the connection timeout.
     * `active` - (`true` or `false`) specifies whether data is received as
         messages (mailbox) or by calling `confirmation/1` each time `request/2` is called.
+    * `close_on_timeout` - (`true` or `false`) specifies whether the tcp port is closed
+        when a timeout occurs (only in passive mode). Defaults to `true`.
 
     The messages (when active mode is true) have the following form:
 
@@ -136,6 +139,7 @@ defmodule Modbux.Tcp.Client do
     port = args[:tcp_port] || @port
     ip = args[:ip] || @ip
     timeout = args[:timeout] || @timeout
+    close_on_timeout = Keyword.get(args, :close_on_timeout, true)
     status = :closed
 
     active =
@@ -145,7 +149,15 @@ defmodule Modbux.Tcp.Client do
         args[:active]
       end
 
-    state = %Client{ip: ip, tcp_port: port, timeout: timeout, status: status, active: active}
+    state = %Client{
+      ip: ip,
+      tcp_port: port,
+      timeout: timeout,
+      status: status,
+      active: active,
+      close_on_timeout: close_on_timeout
+    }
+
     {:ok, state}
   end
 
@@ -296,7 +308,9 @@ defmodule Modbux.Tcp.Client do
             {:error, reason} ->
               Logger.error("(#{__MODULE__}, :confirmation) reason: #{inspect(reason)}")
               # cerrar?
-              new_state = close_socket(state)
+              new_state =
+                if reason == :timeout and not state.close_on_timeout, do: state, else: close_socket(state)
+
               new_state = %Client{new_state | cmd: nil, msg_len: 0}
               {:reply, {:error, reason}, new_state}
           end
